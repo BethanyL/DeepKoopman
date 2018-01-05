@@ -77,7 +77,7 @@ def DefineLoss(x, y, g_list, g_list_omega, params, trainable_var):
 	if params['relative_loss']:
 		loss1den = tf.reduce_mean(tf.reduce_mean(tf.square(tf.squeeze(x[0,:,:])),1))+den_nonzero
 	else:
-		loss1den = 1
+		loss1den = tf.to_double(1.0)
 	loss1 = params['recon_lam']*tf.truediv(tf.reduce_mean(tf.reduce_mean(tf.square(y[0] - tf.squeeze(x[0,:,:])),1)), loss1den)
 
 	# gets dynamics
@@ -89,7 +89,7 @@ def DefineLoss(x, y, g_list, g_list_omega, params, trainable_var):
 			if params['relative_loss']:
 				loss2den = tf.reduce_mean(tf.reduce_mean(tf.square(tf.squeeze(x[shift,:,:])),1))+den_nonzero
 			else:
-				loss2den = 1
+				loss2den = tf.to_double(1.0)
 			loss2 = loss2 + params['recon_lam']*tf.truediv(tf.reduce_mean(tf.reduce_mean(tf.square(y[j+1] - tf.squeeze(x[shift,:,:])),1)), loss2den)
 		loss2 = loss2/params['num_shifts']
 
@@ -105,7 +105,7 @@ def DefineLoss(x, y, g_list, g_list_omega, params, trainable_var):
 				if params['relative_loss']:
 					loss3den = tf.reduce_mean(tf.reduce_mean(tf.square(tf.squeeze(g_list[countSM+1])),1))+den_nonzero
 				else:
-					loss3den = 1
+					loss3den = tf.to_double(1.0)
 				loss3 = loss3 + params['mid_shift_lam']*tf.truediv(tf.reduce_mean(tf.reduce_mean(tf.square(next_step - g_list[countSM+1]),1)),loss3den)
 				countSM +=1
 			# hopefully still on correct traj, so same omegas as before
