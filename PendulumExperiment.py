@@ -3,8 +3,8 @@ import random as r
 import copy
 
 params = {}
-params['data_name'] = 'PendulumRing6Long'
-params['foldername'] = 'exp167'
+params['data_name'] = 'Pendulum'
+params['foldername'] = 'exp2'
 params['distributionW'] = 'dl'
 params['distributionW_omega'] = 'dl'
 params['batch_flag'] = 0

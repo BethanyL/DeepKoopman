@@ -3,8 +3,8 @@ import random as r
 import copy
 
 params = {}
-params['data_name'] = 'KoopmanExampleSquare4Long'
-params['foldername'] = 'exp165'
+params['data_name'] = 'DiscreteSpectrumExample'
+params['foldername'] = 'exp1'
 params['distributionW'] = 'dl'
 params['distributionW_omega'] = 'dl'
 params['batch_flag'] = 0
