@@ -22,7 +22,7 @@ def weight_variable(shape, varname, distribution='tn', scale=0.1, first_guess=0)
         if (initial.shape[0] != shape[0]) or (initial.shape[1] != shape[1]):
             raise ValueError(
                 'Initialization for %s is not correct shape. Expecting (%d,%d), but find (%d,%d) in %s.' % (
-                varname, shape[0], shape[1], initial.shape[0], initial.shape[1], distribution))
+                    varname, shape[0], shape[1], initial.shape[0], initial.shape[1], distribution))
     return tf.Variable(initial, name=varname)
 
 
