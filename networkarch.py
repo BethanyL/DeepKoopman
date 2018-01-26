@@ -26,7 +26,7 @@ def weight_variable(shape, varname, distribution='tn', scale=0.1, first_guess=0)
     return tf.Variable(initial, name=varname)
 
 
-def bias_variable(shape, varname, distribution=0):
+def bias_variable(shape, varname, distribution=''):
     if distribution:
         initial = np.genfromtxt(distribution, delimiter=',', dtype=np.float64)
     else:
@@ -34,7 +34,7 @@ def bias_variable(shape, varname, distribution=0):
     return tf.Variable(initial, name=varname)
 
 
-def encoder(widths, distributionW, distributionB, scale, num_shifts_max, first_guess):
+def encoder(widths, distribution_w, distribution_b, scale, num_shifts_max, first_guess):
     x = tf.placeholder(tf.float64, [num_shifts_max + 1, None, widths[0]])
     # nx1 patch, number of input channels, number of output channels (features)
     # m = number of hidden units
@@ -44,10 +44,11 @@ def encoder(widths, distributionW, distributionB, scale, num_shifts_max, first_g
 
     for i in np.arange(len(widths) - 1):
         weights['WE%d' % (i + 1)] = weight_variable([widths[i], widths[i + 1]], varname='WE%d' % (i + 1),
-                                                    distribution=distributionW[i], scale=scale, first_guess=first_guess)
+                                                    distribution=distribution_w[i], scale=scale,
+                                                    first_guess=first_guess)
         # TODO: first guess for biases too (and different ones for different weights)
         biases['bE%d' % (i + 1)] = bias_variable([widths[i + 1], ], varname='bE%d' % (i + 1),
-                                                 distribution=distributionB[i])
+                                                 distribution=distribution_b[i])
     return x, weights, biases
 
 
@@ -91,16 +92,16 @@ def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, p
     return final
 
 
-def decoder(widths, distributionW, distributionB, scale, name='D', first_guess=0):
+def decoder(widths, distribution_w, distribution_b, scale, name='D', first_guess=0):
     weights = dict()
     biases = dict()
     for i in np.arange(len(widths) - 1):
         ind = i + 1
         weights['W%s%d' % (name, ind)] = weight_variable([widths[i], widths[i + 1]], varname='W%s%d' % (name, ind),
-                                                         distribution=distributionW[ind - 1], scale=scale,
+                                                         distribution=distribution_w[ind - 1], scale=scale,
                                                          first_guess=first_guess)
         biases['b%s%d' % (name, ind)] = bias_variable([widths[i + 1], ], varname='b%s%d' % (name, ind),
-                                                      distribution=distributionB[ind - 1])
+                                                      distribution=distribution_b[ind - 1])
     return weights, biases
 
 
@@ -122,7 +123,7 @@ def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, phase, keep
     return final
 
 
-def FormLStack(omega_output, deltat):
+def form_L_stack(omega_output, deltat):
     # encoded_layer is [None, 2]
     # omega_output is [None, 1]
     if omega_output.shape[1] == 1:
@@ -146,7 +147,7 @@ def varying_multiply(y, omegas, deltat):
 
     # y is [None, 2] and omegas is [None, 1]
     ystack = tf.stack([y, y], axis=2)  # [None, 2, 2] put one row below other
-    Lstack = FormLStack(omegas, deltat)  # [None, 2, 2]
+    Lstack = form_L_stack(omegas, deltat)  # [None, 2, 2]
     elmtwise_prod = tf.multiply(ystack, Lstack)
     # add middle dimension (across "columns") i.e. cos(omega*deltat)*y1 + sin(omega*deltat)*y2
     output = tf.reduce_sum(elmtwise_prod, 1)  # [None, 2]
@@ -154,8 +155,8 @@ def varying_multiply(y, omegas, deltat):
 
 
 def CreateOmegaNet(n, phase, keep_prob, params, x):
-    weights, biases = decoder(params['widths_omega'], distributionW=params['distributionW_omega'],
-                              distributionB=params['distributionB_omega'], scale=params['scale_omega'], name='O',
+    weights, biases = decoder(params['widths_omega'], distribution_w=params['distribution_w_omega'],
+                              distribution_b=params['distribution_b_omega'], scale=params['scale_omega'], name='O',
                               first_guess=params['first_guess_omega'])
     g_list = encoder_apply(x, weights, biases, params['act_type'], params['batch_flag'], phase, out_flag=0,
                            shifts_middle=params['shifts_middle'], keep_prob=keep_prob, name='O',
@@ -174,8 +175,8 @@ def CreateKoopmanNet(n, phase, keep_prob, params):
         max_shifts_to_stack = max(max_shifts_to_stack, max(params['shifts_middle']))
 
     encoder_widths = params['widths'][0:depth + 2]  # n ... l
-    x, weights, biases = encoder(encoder_widths, distributionW=params['distributionW'][0:depth + 1],
-                                 distributionB=params['distributionB'][0:depth + 1], scale=params['scale'],
+    x, weights, biases = encoder(encoder_widths, distribution_w=params['distribution_w'][0:depth + 1],
+                                 distribution_b=params['distribution_b'][0:depth + 1], scale=params['scale'],
                                  num_shifts_max=max_shifts_to_stack, first_guess=params['first_guess'])
     params['num_encoder_weights'] = len(weights)
     g_list = encoder_apply(x, weights, biases, params['act_type'], params['batch_flag'], phase, out_flag=0,
@@ -185,17 +186,18 @@ def CreateKoopmanNet(n, phase, keep_prob, params):
     l = params['widths'][depth + 2]
     g_list_omega = []
     # g_list_omega is list of omegas, one entry for each middle_shift of x (like g_list)
-    g_list_omega, oWeights, oBiases = CreateOmegaNet(n, phase, keep_prob, params, x)
-    params['num_omega_weights'] = len(oWeights)
-    weights.update(oWeights)
-    biases.update(oBiases)
+    g_list_omega, weights_omega, biases_omega = CreateOmegaNet(n, phase, keep_prob, params, x)
+    params['num_omega_weights'] = len(weights_omega)
+    weights.update(weights_omega)
+    biases.update(biases_omega)
 
     num_widths = len(params['widths'])
     decoder_widths = params['widths'][depth + 2:num_widths]  # l ... n
-    dWeights, dBiases = decoder(decoder_widths, distributionW=params['distributionW'][depth + 2:],
-                                distributionB=params['distributionB'][depth + 2:], scale=params['scale'])
-    weights.update(dWeights)
-    biases.update(dBiases)
+    weights_decoder, biases_decoder = decoder(decoder_widths, distribution_w=params['distribution_w'][depth + 2:],
+                                              distribution_b=params['distribution_b'][depth + 2:],
+                                              scale=params['scale'])
+    weights.update(weights_decoder)
+    biases.update(biases_decoder)
 
     y = []
     # y[0] is x[0,:,:] encoded and then decoded (no stepping forward)
