@@ -17,7 +17,7 @@ params['lenT'] = 51
 params['max_time'] = 4 * 60 * 60  # 4 hours
 deltat = 0.02
 params['deltat'] = deltat
-l = 2
+L = 2
 
 params['num_shifts'] = 3
 params['mid_shift_lam'] = 1.0
@@ -37,7 +37,7 @@ for count in range(200):
     params['reg_lam'] = 10 ** (-r.uniform(14, 18))
     params['lr'] = 10 ** (-3)
     w = 100
-    params['widths'] = [2, w, w, w, l, l, w, w, w, 2]
+    params['widths'] = [2, w, w, w, L, L, w, w, w, 2]
     params['widths_omega'] = [2, w, w, w, 1]
     params['d'] = len(params['widths'])
 
