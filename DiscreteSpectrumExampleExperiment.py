@@ -24,7 +24,6 @@ params['widths_omega'] = [2, w, w, w, 1]
 
 # settings related to loss function
 params['num_shifts'] = 3
-params['mid_shift_lam'] = 1.0
 params['Linf_lam'] = 10 ** (-6)
 
 # settings related to the training
@@ -43,6 +42,7 @@ for count in range(200):
     params['batch_size'] = int(2 ** (r.uniform(6, 9)))
     steps_to_see_all = num_examples / params['batch_size']
     params['num_steps_per_file_pass'] = (int(steps_to_see_all) + 1) * params['num_steps_per_batch']
+
     params['L2_lam'] = 10 ** (-r.uniform(12, 18))
     params['L1_lam'] = 10 ** (-r.uniform(14, 18))
 
