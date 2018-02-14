@@ -253,10 +253,10 @@ def set_defaults(params):
         print("setting default: distribution for weights on omega net is dl")
         params['dist_weights_omega'] = 'dl'
     if 'dist_biases' not in params:
-        print("setting default: initialize biases for main net to 0")
+        print("setting default: initialize biases for main net to 0.1")
         params['dist_biases'] = 0
     if 'dist_biases_omega' not in params:
-        print("setting default: initialize biases for omega net to 0")
+        print("setting default: initialize biases for omega net to 0.1")
         params['dist_biases_omega'] = 0
 
     if 'first_guess' not in params:
