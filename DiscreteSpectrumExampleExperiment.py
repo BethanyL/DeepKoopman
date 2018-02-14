@@ -1,7 +1,7 @@
 import copy
 import random as r
 
-import training as t
+import training
 
 params = {}
 
@@ -35,7 +35,7 @@ params['learning_rate'] = 10 ** (-3)
 params['max_time'] = 4 * 60 * 60  # 4 hours
 params['min_halfway'] = 10 ** (-5)
 
-for count in range(200):
+for count in range(200): # loop to do random experiments
     params['num_shifts_middle'] = r.randint(5, params['len_time'] - 1)
     max_shifts = max(params['num_shifts'], params['num_shifts_middle'])
     num_examples = num_initial_conditions * (params['len_time'] - max_shifts)
@@ -46,4 +46,4 @@ for count in range(200):
     params['L2_lam'] = 10 ** (-r.uniform(12, 18))
     params['L1_lam'] = 10 ** (-r.uniform(14, 18))
 
-    t.main_exp(copy.deepcopy(params))
+    training.main_exp(copy.deepcopy(params))
