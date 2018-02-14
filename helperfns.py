@@ -29,41 +29,41 @@ def stack_data(data, num_shifts, len_time):
 
 def choose_optimizer(params, regularized_loss, trainable_var):
     if params['opt_alg'] == 'adam':
-        optimizer = tf.train.AdamOptimizer(params['lr']).minimize(regularized_loss, var_list=trainable_var)
+        optimizer = tf.train.AdamOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
     elif params['opt_alg'] == 'adadelta':
         if params['decay_rate'] > 0:
-            optimizer = tf.train.AdadeltaOptimizer(params['lr'], params['decay_rate']).minimize(regularized_loss,
+            optimizer = tf.train.AdadeltaOptimizer(params['learning_rate'], params['decay_rate']).minimize(regularized_loss,
                                                                                                 var_list=trainable_var)
         else:
             # defaults 0.001, 0.95
-            optimizer = tf.train.AdadeltaOptimizer(params['lr']).minimize(regularized_loss, var_list=trainable_var)
+            optimizer = tf.train.AdadeltaOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
     elif params['opt_alg'] == 'adagrad':
         # also has initial_accumulator_value parameter
-        optimizer = tf.train.AdagradOptimizer(params['lr']).minimize(regularized_loss, var_list=trainable_var)
+        optimizer = tf.train.AdagradOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
     elif params['opt_alg'] == 'adagradDA':
         # Be careful when using AdagradDA for deep networks as it will require careful initialization of the gradient
         # accumulators for it to train.
-        optimizer = tf.train.AdagradDAOptimizer(params['lr'], tf.get_global_step()).minimize(regularized_loss,
+        optimizer = tf.train.AdagradDAOptimizer(params['learning_rate'], tf.get_global_step()).minimize(regularized_loss,
                                                                                              var_list=trainable_var)
     elif params['opt_alg'] == 'ftrl':
         # lots of hyperparameters: learning_rate_power, initial_accumulator_value,
         # l1_regularization_strength, l2_regularization_strength
-        optimizer = tf.train.FtrlOptimizer(params['lr']).minimize(regularized_loss, var_list=trainable_var)
+        optimizer = tf.train.FtrlOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
     elif params['opt_alg'] == 'proximalGD':
         # can have built-in reg.
-        optimizer = tf.train.ProximalGradientDescentOptimizer(params['lr']).minimize(regularized_loss,
+        optimizer = tf.train.ProximalGradientDescentOptimizer(params['learning_rate']).minimize(regularized_loss,
                                                                                      var_list=trainable_var)
     elif params['opt_alg'] == 'proximalAdagrad':
         # initial_accumulator_value, reg.
-        optimizer = tf.train.ProximalAdagradOptimizer(params['lr']).minimize(regularized_loss, var_list=trainable_var)
+        optimizer = tf.train.ProximalAdagradOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
     elif params['opt_alg'] == 'RMS':
         # momentum, epsilon, centered (False/True)
         if params['decay_rate'] > 0:
-            optimizer = tf.train.RMSPropOptimizer(params['lr'], params['decay_rate']).minimize(regularized_loss,
+            optimizer = tf.train.RMSPropOptimizer(params['learning_rate'], params['decay_rate']).minimize(regularized_loss,
                                                                                                var_list=trainable_var)
         else:
             # default decay_rate 0.9
-            optimizer = tf.train.RMSPropOptimizer(params['lr']).minimize(regularized_loss, var_list=trainable_var)
+            optimizer = tf.train.RMSPropOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
     else:
         raise ValueError("chose invalid opt_alg %s in params dict" % params['opt_alg'])
     return optimizer
@@ -78,95 +78,95 @@ def check_progress(start, best_error, params):
     if not params['been5min']:
         # only check 5 min progress once
         if current_time - start > 5 * 60:
-            if best_error > params['min5min']:
+            if best_error > params['min_5min']:
                 print("too slowly improving in first five minutes: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first 5 min'
                 finished = 1
                 return finished, save_now
             else:
-                print("been 5 minutes, err = %.15f < %.15f" % (best_error, params['min5min']))
+                print("been 5 minutes, err = %.15f < %.15f" % (best_error, params['min_5min']))
                 params['been5min'] = 1
     if not params['been20min']:
         # only check 20 min progress once
         if current_time - start > 20 * 60:
-            if best_error > params['min20min']:
+            if best_error > params['min_20min']:
                 print("too slowly improving in first 20 minutes: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first 20 min'
                 finished = 1
                 return finished, save_now
             else:
-                print("been 20 minutes, err = %.15f < %.15f" % (best_error, params['min20min']))
+                print("been 20 minutes, err = %.15f < %.15f" % (best_error, params['min_20min']))
                 params['been20min'] = 1
     if not params['been40min']:
         # only check 40 min progress once
         if current_time - start > 40 * 60:
-            if best_error > params['min40min']:
+            if best_error > params['min_40min']:
                 print("too slowly improving in first 40 minutes: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first 40 min'
                 finished = 1
                 return finished, save_now
             else:
-                print("been 40 minutes, err = %.15f < %.15f" % (best_error, params['min40min']))
+                print("been 40 minutes, err = %.15f < %.15f" % (best_error, params['min_40min']))
                 params['been40min'] = 1
     if not params['been1hr']:
         # only check 1 hr progress once
         if current_time - start > 60 * 60:
-            if best_error > params['min1hr']:
+            if best_error > params['min_1hr']:
                 print("too slowly improving in first hour: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first hour'
                 finished = 1
                 return finished, save_now
             else:
-                print("been 1 hour, err = %.15f < %.15f" % (best_error, params['min1hr']))
+                print("been 1 hour, err = %.15f < %.15f" % (best_error, params['min_1hr']))
                 save_now = 1
                 params['been1hr'] = 1
     if not params['been2hr']:
         # only check 2 hr progress once
         if current_time - start > 2 * 60 * 60:
-            if best_error > params['min2hr']:
+            if best_error > params['min_2hr']:
                 print("too slowly improving in first two hours: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first two hours'
                 finished = 1
                 return finished, save_now
             else:
-                print("been 2 hours, err = %.15f < %.15f" % (best_error, params['min2hr']))
+                print("been 2 hours, err = %.15f < %.15f" % (best_error, params['min_2hr']))
                 save_now = 1
                 params['been2hr'] = 1
     if not params['been3hr']:
         # only check 3 hr progress once
         if current_time - start > 3 * 60 * 60:
-            if best_error > params['min3hr']:
+            if best_error > params['min_3hr']:
                 print("too slowly improving in first three hours: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first three hours'
                 finished = 1
                 return finished, save_now
             else:
-                print("been 3 hours, err = %.15f < %.15f" % (best_error, params['min3hr']))
+                print("been 3 hours, err = %.15f < %.15f" % (best_error, params['min_3hr']))
                 save_now = 1
                 params['been3hr'] = 1
     if not params['been4hr']:
         # only check 4 hr progress once
         if current_time - start > 4 * 60 * 60:
-            if best_error > params['min4hr']:
+            if best_error > params['min_4hr']:
                 print("too slowly improving in first four hours: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first four hours'
                 finished = 1
                 return finished, save_now
             else:
-                print("been 4 hours, err = %.15f < %.15f" % (best_error, params['min4hr']))
+                print("been 4 hours, err = %.15f < %.15f" % (best_error, params['min_4hr']))
                 save_now = 1
                 params['been4hr'] = 1
 
     if not params['beenHalf']:
         # only check halfway progress once
         if current_time - start > params['max_time'] / 2:
-            if best_error > params['minHalfway']:
+            if best_error > params['min_halfway']:
                 print("too slowly improving 1/2 of way in: val err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving halfway in'
                 finished = 1
                 return finished, save_now
             else:
-                print("Halfway through time, err = %.15f < %.15f" % (best_error, params['minHalfway']))
+                print("Halfway through time, err = %.15f < %.15f" % (best_error, params['min_halfway']))
                 params['beenHalf'] = 1
 
     if current_time - start > params['max_time']:
@@ -317,9 +317,9 @@ def set_defaults(params):
     if 'num_steps_per_file_pass' not in params:
         print("setting default: up to 1000000 steps per training file before moving to next one")
         params['num_steps_per_file_pass'] = 1000000
-    if 'lr' not in params:
+    if 'learning_rate' not in params:
         print("setting default learning rate")
-        params['lr'] = .003
+        params['learning_rate'] = .003
     if 'opt_alg' not in params:
         print("setting default: use Adam optimizer")
         params['opt_alg'] = 'adam'
@@ -337,30 +337,30 @@ def set_defaults(params):
     if 'max_time' not in params:
         print("setting default: run up to 6 hours")
         params['max_time'] = 6 * 60 * 60  # 6 hours
-    if 'min5min' not in params:
-        params['min5min'] = 10 ** (-2)
-        print("setting default: must reach %f in 5 minutes" % params['min5min'])
-    if 'min20min' not in params:
-        params['min20min'] = 10 ** (-3)
-        print("setting default: must reach %f in 20 minutes" % params['min20min'])
-    if 'min40min' not in params:
-        params['min40min'] = 10 ** (-4)
-        print("setting default: must reach %f in 40 minutes" % params['min40min'])
-    if 'min1hr' not in params:
-        params['min1hr'] = 10 ** (-5)
-        print("setting default: must reach %f in 1 hour" % params['min1hr'])
-    if 'min2hr' not in params:
-        params['min2hr'] = 10 ** (-5.25)
-        print("setting default: must reach %f in 2 hours" % params['min2hr'])
-    if 'min3hr' not in params:
-        params['min3hr'] = 10 ** (-5.5)
-        print("setting default: must reach %f in 3 hours" % params['min3hr'])
-    if 'min4hr' not in params:
-        params['min4hr'] = 10 ** (-5.75)
-        print("setting default: must reach %f in 4 hours" % params['min4hr'])
-    if 'minHalfway' not in params:
-        params['minHalfway'] = 10 ** (-4)
-        print("setting default: must reach %f in first half of time allotted" % params['minHalfway'])
+    if 'min_5min' not in params:
+        params['min_5min'] = 10 ** (-2)
+        print("setting default: must reach %f in 5 minutes" % params['min_5min'])
+    if 'min_20min' not in params:
+        params['min_20min'] = 10 ** (-3)
+        print("setting default: must reach %f in 20 minutes" % params['min_20min'])
+    if 'min_40min' not in params:
+        params['min_40min'] = 10 ** (-4)
+        print("setting default: must reach %f in 40 minutes" % params['min_40min'])
+    if 'min_1hr' not in params:
+        params['min_1hr'] = 10 ** (-5)
+        print("setting default: must reach %f in 1 hour" % params['min_1hr'])
+    if 'min_2hr' not in params:
+        params['min_2hr'] = 10 ** (-5.25)
+        print("setting default: must reach %f in 2 hours" % params['min_2hr'])
+    if 'min_3hr' not in params:
+        params['min_3hr'] = 10 ** (-5.5)
+        print("setting default: must reach %f in 3 hours" % params['min_3hr'])
+    if 'min_4hr' not in params:
+        params['min_4hr'] = 10 ** (-5.75)
+        print("setting default: must reach %f in 4 hours" % params['min_4hr'])
+    if 'min_halfway' not in params:
+        params['min_halfway'] = 10 ** (-4)
+        print("setting default: must reach %f in first half of time allotted" % params['min_halfway'])
 
     # initializing trackers for how long the training has run
     params['been5min'] = 0
