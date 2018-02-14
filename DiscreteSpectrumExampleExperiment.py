@@ -10,7 +10,7 @@ params['data_name'] = 'DiscreteSpectrumExample'
 params['len_time'] = 51
 n = 2
 params['data_train_len'] = 10
-numICs = 29400  # per training file (10 training data files)
+num_initial_conditions = 29400  # per training file (10 training data files)
 params['delta_t'] = 0.02
 
 # settings related to saving results
@@ -38,7 +38,7 @@ params['minHalfway'] = 10 ** (-5)
 for count in range(200):
     params['num_shifts_middle'] = r.randint(5, params['len_time'] - 1)
     max_shifts = max(params['num_shifts'], params['num_shifts_middle'])
-    num_examples = numICs * (params['len_time'] - max_shifts)
+    num_examples = num_initial_conditions * (params['len_time'] - max_shifts)
     params['batch_size'] = int(2 ** (r.uniform(6, 9)))
     steps_to_see_all = num_examples / params['batch_size']
     params['num_steps_per_file_pass'] = (int(steps_to_see_all) + 1) * params['num_steps_per_batch']

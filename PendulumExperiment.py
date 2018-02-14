@@ -10,7 +10,7 @@ params['data_name'] = 'Pendulum'
 params['len_time'] = 51
 n = 2
 params['data_train_len'] = 10
-numICs = 29400  # per training file (10 training data files)
+num_initial_conditions = 29400  # per training file (10 training data files)
 params['delta_t'] = 0.02
 
 # settings related to saving results
@@ -42,7 +42,7 @@ params['minHalfway'] = 10 ** (-6.7)
 for count in range(200):
     params['num_shifts_middle'] = r.randint(48, 50)
     max_shifts = max(params['num_shifts'], params['num_shifts_middle'])
-    num_examples = numICs * (params['len_time'] - max_shifts)
+    num_examples = num_initial_conditions * (params['len_time'] - max_shifts)
     params['batch_size'] = int(2 ** (r.uniform(6, 8.5)))
     steps_to_see_all = num_examples / params['batch_size']
     params['num_steps_per_file_pass'] = (int(steps_to_see_all) + 1) * params['num_steps_per_batch']
