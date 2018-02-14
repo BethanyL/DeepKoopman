@@ -1,8 +1,8 @@
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
 
-def weight_variable(shape, varname, distribution='tn', scale=0.1, first_guess=0):
+def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0):
     if distribution == 'tn':
         initial = tf.truncated_normal(shape, stddev=scale, dtype=tf.float64) + first_guess
     elif distribution == 'xavier':
@@ -22,16 +22,16 @@ def weight_variable(shape, varname, distribution='tn', scale=0.1, first_guess=0)
         if (initial.shape[0] != shape[0]) or (initial.shape[1] != shape[1]):
             raise ValueError(
                 'Initialization for %s is not correct shape. Expecting (%d,%d), but find (%d,%d) in %s.' % (
-                    varname, shape[0], shape[1], initial.shape[0], initial.shape[1], distribution))
-    return tf.Variable(initial, name=varname)
+                    var_name, shape[0], shape[1], initial.shape[0], initial.shape[1], distribution))
+    return tf.Variable(initial, name=var_name)
 
 
-def bias_variable(shape, varname, distribution=''):
+def bias_variable(shape, var_name, distribution=''):
     if distribution:
         initial = np.genfromtxt(distribution, delimiter=',', dtype=np.float64)
     else:
         initial = tf.constant(0.1, shape=shape, dtype=tf.float64)
-    return tf.Variable(initial, name=varname)
+    return tf.Variable(initial, name=var_name)
 
 
 def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_guess):
@@ -43,11 +43,11 @@ def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_gues
     biases = dict()
 
     for i in np.arange(len(widths) - 1):
-        weights['WE%d' % (i + 1)] = weight_variable([widths[i], widths[i + 1]], varname='WE%d' % (i + 1),
+        weights['WE%d' % (i + 1)] = weight_variable([widths[i], widths[i + 1]], var_name='WE%d' % (i + 1),
                                                     distribution=dist_weights[i], scale=scale,
                                                     first_guess=first_guess)
         # TODO: first guess for biases too (and different ones for different weights)
-        biases['bE%d' % (i + 1)] = bias_variable([widths[i + 1], ], varname='bE%d' % (i + 1),
+        biases['bE%d' % (i + 1)] = bias_variable([widths[i + 1], ], var_name='bE%d' % (i + 1),
                                                  distribution=dist_biases[i])
     return x, weights, biases
 
@@ -82,10 +82,10 @@ def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, p
             h1 = tf.nn.elu(h1)
         prev_layer = tf.cond(keep_prob < 1.0, lambda: tf.nn.dropout(h1, keep_prob), lambda: h1)
 
-    if len(weights) == 1:
-        i = -1
+    # apply last layer without any nonlinearity
+    final = tf.matmul(prev_layer, weights['W%s%d' % (name, num_encoder_weights)]) + biases[
+        'b%s%d' % (name, num_encoder_weights)]
 
-    final = tf.matmul(prev_layer, weights['W%s%d' % (name, i + 2)]) + biases['b%s%d' % (name, i + 2)]
     if (not out_flag) and batch_flag:
         final = tf.contrib.layers.batch_norm(final, is_training=phase)
 
@@ -97,10 +97,10 @@ def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
     biases = dict()
     for i in np.arange(len(widths) - 1):
         ind = i + 1
-        weights['W%s%d' % (name, ind)] = weight_variable([widths[i], widths[i + 1]], varname='W%s%d' % (name, ind),
+        weights['W%s%d' % (name, ind)] = weight_variable([widths[i], widths[i + 1]], var_name='W%s%d' % (name, ind),
                                                          distribution=dist_weights[ind - 1], scale=scale,
                                                          first_guess=first_guess)
-        biases['b%s%d' % (name, ind)] = bias_variable([widths[i + 1], ], varname='b%s%d' % (name, ind),
+        biases['b%s%d' % (name, ind)] = bias_variable([widths[i + 1], ], var_name='b%s%d' % (name, ind),
                                                       distribution=dist_biases[ind - 1])
     return weights, biases
 
@@ -118,39 +118,43 @@ def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, phase, keep
             h1 = tf.nn.elu(h1)
         prev_layer = tf.cond(keep_prob < 1.0, lambda: tf.nn.dropout(h1, keep_prob), lambda: h1)
 
-    final = tf.matmul(prev_layer, weights['WD%d' % (i + 2)]) + biases['bD%d' % (i + 2)]
+    # apply last layer without any nonlinearity
+    final = tf.matmul(prev_layer, weights['WD%d' % num_decoder_weights]) + biases['bD%d' % num_decoder_weights]
 
     return final
 
 
-def form_L_stack(omega_output, deltat):
+def form_L_stack(omega_output, delta_t):
     # encoded_layer is [None, 2]
     # omega_output is [None, 1]
     if omega_output.shape[1] == 1:
-        entry11 = tf.cos(omega_output * deltat)
-        entry12 = tf.sin(omega_output * deltat)
+        entry11 = tf.cos(omega_output * delta_t)
+        entry12 = tf.sin(omega_output * delta_t)
         row1 = tf.concat([entry11, -entry12], axis=1)  # [None, 2]
         row2 = tf.concat([entry12, entry11], axis=1)  # [None, 2]
 
     elif omega_output.shape[1] == 2:
-        scale = tf.exp(omega_output[:, 1] * deltat)
-        entry11 = tf.multiply(scale, tf.cos(omega_output[:, 0] * deltat))
-        entry12 = tf.multiply(scale, tf.sin(omega_output[:, 0] * deltat))
+        scale = tf.exp(omega_output[:, 1] * delta_t)
+        entry11 = tf.multiply(scale, tf.cos(omega_output[:, 0] * delta_t))
+        entry12 = tf.multiply(scale, tf.sin(omega_output[:, 0] * delta_t))
         row1 = tf.stack([entry11, -entry12], axis=1)  # [None, 2]
         row2 = tf.stack([entry12, entry11], axis=1)  # [None, 2]
     # TODO: generalize this function
+    else:
+        raise ValueError('So far, form_L_stack only implemented for omega_output of 1 or 2 columns')
+
     Lstack = tf.stack([row1, row2], axis=2)  # [None, 2, 2] put one row below other
     return Lstack
 
 
-def varying_multiply(y, omegas, deltat):
+def varying_multiply(y, omegas, delta_t):
     # multiply on the left: y*omegas
 
     # y is [None, 2] and omegas is [None, 1]
     ystack = tf.stack([y, y], axis=2)  # [None, 2, 2] put one row below other
-    Lstack = form_L_stack(omegas, deltat)  # [None, 2, 2]
+    Lstack = form_L_stack(omegas, delta_t)  # [None, 2, 2]
     elmtwise_prod = tf.multiply(ystack, Lstack)
-    # add middle dimension (across "columns") i.e. cos(omega*deltat)*y1 + sin(omega*deltat)*y2
+    # add middle dimension (across "columns") i.e. cos(omega*delta_t)*y1 + sin(omega*delta_t)*y2
     output = tf.reduce_sum(elmtwise_prod, 1)  # [None, 2]
     return output
 
@@ -206,7 +210,7 @@ def create_koopman_net(phase, keep_prob, params):
                            params['num_decoder_weights']))
 
     # g_list_omega[0] is for x[0,:,:], pairs with g_list[0]=encoded_layer
-    advanced_layer = varying_multiply(encoded_layer, g_list_omega[0], params['deltat'])
+    advanced_layer = varying_multiply(encoded_layer, g_list_omega[0], params['delta_t'])
 
     for j in np.arange(max(params['shifts'])):  # loops 0, 1, ...
         # considering penalty on subset of yk+1, yk+2, yk+3, ... yk+20
@@ -214,7 +218,7 @@ def create_koopman_net(phase, keep_prob, params):
             y.append(decoder_apply(advanced_layer, weights, biases, params['act_type'], params['batch_flag'], phase,
                                    keep_prob, params['num_decoder_weights']))
 
-        advanced_layer = varying_multiply(advanced_layer, g_list_omega[j + 1], params['deltat'])
+        advanced_layer = varying_multiply(advanced_layer, g_list_omega[j + 1], params['delta_t'])
 
     if len(y) != (len(params['shifts']) + 1):
         print "messed up looping over shifts! %r" % params['shifts']
