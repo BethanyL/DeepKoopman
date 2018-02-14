@@ -1,19 +1,20 @@
-import helperfns as h
-import random as r
 import copy
+import random as r
+
+import helperfns as h
 
 params = {}
 params['data_name'] = 'Pendulum'
 params['foldername'] = 'exp2'
-params['distributionW'] = 'dl'
-params['distributionW_omega'] = 'dl'
+params['dist_weights'] = 'dl'
+params['dist_weights_omega'] = 'dl'
 params['batch_flag'] = 0
 params['optalg'] = 'adam'
 params['dropout_rate'] = 1.0
 
 params['num_passes_per_file'] = 15 * 6
 params['num_steps_per_batch'] = 2
-params['lenT'] = 51
+params['len_time'] = 51
 params['max_time'] = 6 * 60 * 60  # 6 hours
 deltat = 0.02
 params['deltat'] = deltat
@@ -38,7 +39,7 @@ params['recon_lam'] = .001
 for count in range(200):
     params['num_shifts_middle'] = r.randint(48, 50)
     max_shifts = max(params['num_shifts'], params['num_shifts_middle'])
-    num_examples = numICs * (params['lenT'] - max_shifts)
+    num_examples = numICs * (params['len_time'] - max_shifts)
     params['batch_size'] = int(2 ** (r.uniform(6, 8.5)))
     steps_to_see_all = num_examples / params['batch_size']
     params['num_steps_per_file_pass'] = (int(steps_to_see_all) + 1) * params['num_steps_per_batch']

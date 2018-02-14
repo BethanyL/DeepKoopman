@@ -1,6 +1,7 @@
-import helperfns as h
-import random as r
 import copy
+import random as r
+
+import helperfns as h
 
 params = {}
 params['data_name'] = 'DiscreteSpectrumExample'
@@ -13,7 +14,7 @@ params['dropout_rate'] = 1.0
 
 params['num_passes_per_file'] = 15 * 4
 params['num_steps_per_batch'] = 2
-params['lenT'] = 51
+params['len_time'] = 51
 params['max_time'] = 4 * 60 * 60  # 4 hours
 deltat = 0.02
 params['deltat'] = deltat
@@ -26,9 +27,9 @@ numICs = 29400  # per training file (10 training data files)
 params['minHalfway'] = 10 ** (-5)
 
 for count in range(200):
-    params['num_shifts_middle'] = r.randint(5, params['lenT'] - 1)
+    params['num_shifts_middle'] = r.randint(5, params['len_time'] - 1)
     max_shifts = max(params['num_shifts'], params['num_shifts_middle'])
-    num_examples = numICs * (params['lenT'] - max_shifts)
+    num_examples = numICs * (params['len_time'] - max_shifts)
     params['batch_size'] = int(2 ** (r.uniform(6, 9)))
     steps_to_see_all = num_examples / params['batch_size']
     params['num_steps_per_file_pass'] = (int(steps_to_see_all) + 1) * params['num_steps_per_batch']

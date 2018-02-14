@@ -1,35 +1,36 @@
-import tensorflow as tf
-import numpy as np
-import os
-import time
 import datetime
+import os
 import pickle
+import time
+
+import numpy as np
+import tensorflow as tf
+
 import networkarch as net
 
 
-def stack_data(data, num_shifts, lenT):
+def stack_data(data, num_shifts, len_time):
     nd = data.ndim
     if nd > 1:
         n = data.shape[1]
     else:
         data = (np.asmatrix(data)).getT()
         n = 1
-    num_traj = data.shape[0] / lenT
+    num_traj = data.shape[0] / len_time
 
-    newLenT = lenT - num_shifts
+    new_len_time = len_time - num_shifts
 
-    data_tensor = np.zeros([num_shifts + 1, num_traj * newLenT, n])
+    data_tensor = np.zeros([num_shifts + 1, num_traj * new_len_time, n])
 
     for j in np.arange(num_shifts + 1):
         for count in np.arange(num_traj):
-            data_tensor[j, count * newLenT: newLenT + count * newLenT, :] = data[
-                                                                            count * lenT + j: count * lenT + j + newLenT,
-                                                                            :]
+            data_tensor_range = np.arange(count * new_len_time, new_len_time + count * new_len_time)
+            data_tensor[j, data_tensor_range, :] = data[count * len_time + j: count * len_time + j + new_len_time, :]
 
     return data_tensor
 
 
-def ChooseOptimizer(params, regularized_loss, trainable_var):
+def choose_optimizer(params, regularized_loss, trainable_var):
     if params['optalg'] == 'adam':
         optimizer = tf.train.AdamOptimizer(params['lr']).minimize(regularized_loss, var_list=trainable_var)
     elif params['optalg'] == 'adadelta':
@@ -43,12 +44,10 @@ def ChooseOptimizer(params, regularized_loss, trainable_var):
         # also has initial_accumulateor_value parameter
         optimizer = tf.train.AdagradOptimizer(params['lr']).minimize(regularized_loss, var_list=trainable_var)
     elif params['optalg'] == 'adagradDA':
-        # Be careful when using AdagradDA for deep networks as it will require careful initialization of the gradient accumulators for it to train.
+        # Be careful when using AdagradDA for deep networks as it will require careful initialization of the gradient
+        # accumulators for it to train.
         optimizer = tf.train.AdagradDAOptimizer(params['lr'], tf.get_global_step()).minimize(regularized_loss,
                                                                                              var_list=trainable_var)
-    #	elif optalg == 'momentum':
-    # need to pass in momentum
-    #		optimizer = tf.train.MomentumOptimizer(params['lr']).minimize(regularized_loss)
     elif params['optalg'] == 'ftrl':
         # lots of hyperparameters: learning_rate_power, initial_accumulator_value,
         # l1_regularization_strength, l2_regularization_strength
@@ -69,11 +68,11 @@ def ChooseOptimizer(params, regularized_loss, trainable_var):
             # default decay_rate 0.9
             optimizer = tf.train.RMSPropOptimizer(params['lr']).minimize(regularized_loss, var_list=trainable_var)
     else:
-        print "chose invalid optalg %s" % params['optalg']
+        raise ValueError("chose invalid optalg %s in params dict" % params['optalg'])
     return optimizer
 
 
-def DefineLoss(x, y, g_list, g_list_omega, params, trainable_var):
+def define_loss(x, y, g_list, g_list_omega, params):
     # Minimize the mean squared errors.
     # subtraction and squaring element-wise, then average over both dimensions
     # n columns
@@ -104,35 +103,24 @@ def DefineLoss(x, y, g_list, g_list_omega, params, trainable_var):
 
     # K linear
     loss3 = tf.zeros([1, ], dtype=tf.float64)
-    countSM = 0
+    count_shifts_middle = 0
     if params['num_shifts_middle'] > 0:
         next_step = net.varying_multiply(g_list[0], g_list_omega[0], params['deltat'])
         for j in np.arange(max(params['shifts_middle'])):
-            if ((j + 1) in params['shifts_middle']):
+            if (j + 1) in params['shifts_middle']:
                 # muliply g_list[0] by L (j+1) times
                 # next_step = tf.matmul(g_list[0], L_pow)
                 if params['relative_loss']:
                     loss3den = tf.reduce_mean(
-                        tf.reduce_mean(tf.square(tf.squeeze(g_list[countSM + 1])), 1)) + den_nonzero
+                        tf.reduce_mean(tf.square(tf.squeeze(g_list[count_shifts_middle + 1])), 1)) + den_nonzero
                 else:
                     loss3den = tf.to_double(1.0)
                 loss3 = loss3 + params['mid_shift_lam'] * tf.truediv(
-                    tf.reduce_mean(tf.reduce_mean(tf.square(next_step - g_list[countSM + 1]), 1)), loss3den)
-                countSM += 1
+                    tf.reduce_mean(tf.reduce_mean(tf.square(next_step - g_list[count_shifts_middle + 1]), 1)), loss3den)
+                count_shifts_middle += 1
             # hopefully still on correct traj, so same omegas as before
             next_step = net.varying_multiply(next_step, g_list_omega[j + 1], params['deltat'])
         loss3 = loss3 / params['num_shifts_middle']
-
-    if params['reg_lam']:
-        l1_regularizer = tf.contrib.layers.l1_regularizer(scale=params['reg_lam'], scope=None)
-        # TODO: don't include biases? use weights dict instead?
-        loss_L1 = tf.contrib.layers.apply_regularization(l1_regularizer, weights_list=trainable_var)
-    else:
-        loss_L1 = tf.zeros([1, ], dtype=tf.float64)
-
-    # tf.nn.l2_loss returns number
-    l2_regularizer = tf.add_n([tf.nn.l2_loss(v) for v in trainable_var if 'b' not in v.name])
-    loss_L2 = params['l2_lam'] * l2_regularizer
 
     # inf norm on autoencoder error
     linf1_den = tf.norm(tf.norm(tf.squeeze(x[0, :, :]), axis=1, ord=np.inf), ord=np.inf) + den_nonzero
@@ -144,129 +132,145 @@ def DefineLoss(x, y, g_list, g_list_omega, params, trainable_var):
     loss_Linf = params['reg_inf_lam'] * (regularization_penalty_Linf_1 + regularization_penalty_Linf_2)
 
     loss = loss1 + loss2 + loss3 + loss_Linf
+
+    return loss1, loss2, loss3, loss_Linf, loss
+
+
+def define_regularization(params, trainable_var, loss):
+    if params['reg_lam']:
+        l1_regularizer = tf.contrib.layers.l1_regularizer(scale=params['reg_lam'], scope=None)
+        # TODO: don't include biases? use weights dict instead?
+        loss_L1 = tf.contrib.layers.apply_regularization(l1_regularizer, weights_list=trainable_var)
+    else:
+        loss_L1 = tf.zeros([1, ], dtype=tf.float64)
+
+    # tf.nn.l2_loss returns number
+    l2_regularizer = tf.add_n([tf.nn.l2_loss(v) for v in trainable_var if 'b' not in v.name])
+    loss_L2 = params['l2_lam'] * l2_regularizer
+
     regularized_loss = loss + loss_L1 + loss_L2
 
-    return loss1, loss2, loss3, loss_Linf, loss_L1, loss_L2, loss, regularized_loss
+    return loss_L1, loss_L2, regularized_loss
 
 
-def CheckProgress(start, start_file, bestErr, timeBestErr, params):
+def check_progress(start, start_file, best_error, time_best_error, params):
     finished = 0
-    saveNow = 0
+    save_now = 0
 
-    currentTime = time.time()
-    if (currentTime - max(timeBestErr, start_file) > 5 * 60):
+    current_time = time.time()
+    if (current_time - max(time_best_error, start_file) > 5 * 60):
         print("too long since last improvement")
         params['stop_condition'] = 'too long since last improvement'
         finished = 1
-        return finished, saveNow
+        return finished, save_now
 
     if not params['been5min']:
         # only check 5 min progress once
-        if (currentTime - start > 5 * 60):
-            if bestErr > params['min5min']:
-                print("too slowly improving in first five minutes: err %.15f" % bestErr)
+        if (current_time - start > 5 * 60):
+            if best_error > params['min5min']:
+                print("too slowly improving in first five minutes: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first 5 min'
                 finished = 1
-                return finished, saveNow
+                return finished, save_now
             else:
-                print("been 5 minutes, err = %.15f < %.15f" % (bestErr, params['min5min']))
+                print("been 5 minutes, err = %.15f < %.15f" % (best_error, params['min5min']))
                 params['been5min'] = 1
     if not params['been20min']:
         # only check 20 min progress once
-        if (currentTime - start > 20 * 60):
-            if bestErr > params['min20min']:
-                print("too slowly improving in first 20 minutes: err %.15f" % bestErr)
+        if (current_time - start > 20 * 60):
+            if best_error > params['min20min']:
+                print("too slowly improving in first 20 minutes: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first 20 min'
                 finished = 1
-                return finished, saveNow
+                return finished, save_now
             else:
-                print("been 20 minutes, err = %.15f < %.15f" % (bestErr, params['min20min']))
+                print("been 20 minutes, err = %.15f < %.15f" % (best_error, params['min20min']))
                 params['been20min'] = 1
     if not params['been40min']:
         # only check 40 min progress once
-        if (currentTime - start > 40 * 60):
-            if bestErr > params['min40min']:
-                print("too slowly improving in first 40 minutes: err %.15f" % bestErr)
+        if (current_time - start > 40 * 60):
+            if best_error > params['min40min']:
+                print("too slowly improving in first 40 minutes: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first 40 min'
                 finished = 1
-                return finished, saveNow
+                return finished, save_now
             else:
-                print("been 40 minutes, err = %.15f < %.15f" % (bestErr, params['min40min']))
+                print("been 40 minutes, err = %.15f < %.15f" % (best_error, params['min40min']))
                 params['been40min'] = 1
     if not params['been1hr']:
         # only check 1 hr progress once
-        if (currentTime - start > 60 * 60):
-            if bestErr > params['min1hr']:
-                print("too slowly improving in first hour: err %.15f" % bestErr)
+        if (current_time - start > 60 * 60):
+            if best_error > params['min1hr']:
+                print("too slowly improving in first hour: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first hour'
                 finished = 1
-                return finished, saveNow
+                return finished, save_now
             else:
-                print("been 1 hour, err = %.15f < %.15f" % (bestErr, params['min1hr']))
-                saveNow = 1
+                print("been 1 hour, err = %.15f < %.15f" % (best_error, params['min1hr']))
+                save_now = 1
                 params['been1hr'] = 1
     if not params['been2hr']:
         # only check 2 hr progress once
-        if (currentTime - start > 2 * 60 * 60):
-            if bestErr > params['min2hr']:
-                print("too slowly improving in first two hours: err %.15f" % bestErr)
+        if (current_time - start > 2 * 60 * 60):
+            if best_error > params['min2hr']:
+                print("too slowly improving in first two hours: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first two hours'
                 finished = 1
-                return finished, saveNow
+                return finished, save_now
             else:
-                print("been 2 hours, err = %.15f < %.15f" % (bestErr, params['min2hr']))
-                saveNow = 1
+                print("been 2 hours, err = %.15f < %.15f" % (best_error, params['min2hr']))
+                save_now = 1
                 params['been2hr'] = 1
     if not params['been3hr']:
         # only check 3 hr progress once
-        if (currentTime - start > 3 * 60 * 60):
-            if bestErr > params['min3hr']:
-                print("too slowly improving in first three hours: err %.15f" % bestErr)
+        if (current_time - start > 3 * 60 * 60):
+            if best_error > params['min3hr']:
+                print("too slowly improving in first three hours: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first three hours'
                 finished = 1
-                return finished, saveNow
+                return finished, save_now
             else:
-                print("been 3 hours, err = %.15f < %.15f" % (bestErr, params['min3hr']))
-                saveNow = 1
+                print("been 3 hours, err = %.15f < %.15f" % (best_error, params['min3hr']))
+                save_now = 1
                 params['been3hr'] = 1
     if not params['been4hr']:
         # only check 4 hr progress once
-        if (currentTime - start > 4 * 60 * 60):
-            if bestErr > params['min4hr']:
-                print("too slowly improving in first four hours: err %.15f" % bestErr)
+        if (current_time - start > 4 * 60 * 60):
+            if best_error > params['min4hr']:
+                print("too slowly improving in first four hours: err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving in first four hours'
                 finished = 1
-                return finished, saveNow
+                return finished, save_now
             else:
-                print("been 4 hours, err = %.15f < %.15f" % (bestErr, params['min4hr']))
-                saveNow = 1
+                print("been 4 hours, err = %.15f < %.15f" % (best_error, params['min4hr']))
+                save_now = 1
                 params['been4hr'] = 1
 
     if not params['beenHalf']:
         # only check halfway progress once
-        if (currentTime - start > params['max_time'] / 2):
-            if bestErr > params['minHalfway']:
-                print("too slowly improving 1/2 of way in: test err %.15f" % bestErr)
+        if (current_time - start > params['max_time'] / 2):
+            if best_error > params['minHalfway']:
+                print("too slowly improving 1/2 of way in: test err %.15f" % best_error)
                 params['stop_condition'] = 'too slowly improving halfway in'
                 finished = 1
-                return finished, saveNow
+                return finished, save_now
             else:
-                print("Halfway through time, err = %.15f < %.15f" % (bestErr, params['minHalfway']))
+                print("Halfway through time, err = %.15f < %.15f" % (best_error, params['minHalfway']))
                 params['beenHalf'] = 1
 
-    if (currentTime - start > params['max_time']):
+    if (current_time - start > params['max_time']):
         params['stop_condition'] = 'past max time'
         finished = 1
-        return finished, saveNow
+        return finished, save_now
 
-    return finished, saveNow
+    return finished, save_now
 
 
-def TryNet(n, data_train_len, data_test, exp_name, params):
-    ## SET UP NETWORK
+def try_net(data_train_len, data_test, exp_name, params):
+    # SET UP NETWORK
     phase = tf.placeholder(tf.bool, name='phase')
     keep_prob = tf.placeholder(tf.float64, shape=[], name='keep_prob')
-    x, y, g_list, weights, biases, g_list_omega = net.CreateKoopmanNet(n, phase, keep_prob, params)
+    x, y, g_list, weights, biases, g_list_omega = net.create_koopman_net(phase, keep_prob, params)
 
     max_shifts_to_stack = 1
     if len(params['shifts']):
@@ -274,15 +278,15 @@ def TryNet(n, data_train_len, data_test, exp_name, params):
     if len(params['shifts_middle']):
         max_shifts_to_stack = max(max_shifts_to_stack, max(params['shifts_middle']))
 
-    ## DEFINE LOSS FUNCTION
+    # DEFINE LOSS FUNCTION
     trainable_var = tf.trainable_variables()
-    loss1, loss2, loss3, loss_Linf, loss_L1, loss_L2, loss, regularized_loss = DefineLoss(x, y, g_list, g_list_omega,
-                                                                                          params, trainable_var)
+    loss1, loss2, loss3, loss_Linf, loss = define_loss(x, y, g_list, g_list_omega, params)
+    loss_L1, loss_L2, regularized_loss = define_regularization(params, trainable_var, loss)
 
-    ## CHOOSE OPTIMIZATION ALGORITHM
-    optimizer = ChooseOptimizer(params, regularized_loss, trainable_var)
+    # CHOOSE OPTIMIZATION ALGORITHM
+    optimizer = choose_optimizer(params, regularized_loss, trainable_var)
 
-    ## LAUNCH GRAPH AND INITIALIZE
+    # LAUNCH GRAPH AND INITIALIZE
     sess = tf.Session()
     saver = tf.train.Saver()
 
@@ -300,19 +304,17 @@ def TryNet(n, data_train_len, data_test, exp_name, params):
         (params['num_steps_per_file_pass'] / 20 + 1) * data_train_len * params['num_passes_per_file']).astype(int)
     train_test_error = np.zeros([num_saved, 16])
     count = 0
-    bestErr = 10000
-    bestErrB = 10000
-    timeBestErr = time.time()
+    best_error = 10000
+    time_best_error = time.time()
 
-    data_test_tensor = stack_data(data_test, max_shifts_to_stack, params['lenT'])
+    data_test_tensor = stack_data(data_test, max_shifts_to_stack, params['len_time'])
 
     if params['max_time']:
         start = time.time()
     finished = 0
     save_path = saver.save(sess, params['modelpath'])
 
-    flagLossOnlyPart = 0
-    ## TRAINING
+    # TRAINING
     # loop over training data files
     for f in range(data_train_len * params['num_passes_per_file']):
         if finished:
@@ -322,7 +324,7 @@ def TryNet(n, data_train_len, data_test, exp_name, params):
         if (data_train_len > 1) or (f == 0):
             # don't keep reloading data if always same
             data_train = np.loadtxt(('./data/%s_train%d_x.csv' % (params['data_name'], filenum)), delimiter=',')
-            data_train_tensor = stack_data(data_train, max_shifts_to_stack, params['lenT'])
+            data_train_tensor = stack_data(data_train, max_shifts_to_stack, params['len_time'])
             num_examples = data_train_tensor.shape[1]
             ind = np.arange(num_examples)
             np.random.shuffle(ind)
@@ -351,13 +353,11 @@ def TryNet(n, data_train_len, data_test, exp_name, params):
                 trainerr = sess.run(loss, feed_dict=feed_dict_train_loss)
                 testerr = sess.run(loss, feed_dict=feed_dict_test)
 
-                if (testerr < (bestErr - bestErr * (10 ** (-5)))):
-                    saveNewLoss = 1
-                    if saveNewLoss:
-                        bestErr = testerr.copy()
-                        save_path = saver.save(sess, params['modelpath'])
-                        timeBestErr = time.time()
-                        print("New best test error %f" % bestErr)
+                if (testerr < (best_error - best_error * (10 ** (-5)))):
+                    best_error = testerr.copy()
+                    save_path = saver.save(sess, params['modelpath'])
+                    time_best_error = time.time()
+                    print("New best test error %f" % best_error)
 
                 train_test_error[count, 0] = trainerr
                 train_test_error[count, 1] = testerr
@@ -378,8 +378,8 @@ def TryNet(n, data_train_len, data_test, exp_name, params):
 
                 np.savetxt(csvpath, train_test_error, delimiter=',')
                 if params['max_time']:
-                    finished, saveNow = CheckProgress(start, start_file, bestErr, timeBestErr, params)
-                    if saveNow:
+                    finished, save_now = check_progress(start, start_file, best_error, time_best_error, params)
+                    if save_now:
                         train_test_error_trunc = train_test_error[range(count), :]
                         savefiles(sess, saver, csvpath, train_test_error_trunc, params, weights, biases, 0)
                     if finished:
@@ -390,7 +390,7 @@ def TryNet(n, data_train_len, data_test, exp_name, params):
                 params['stop_condition'] = 'reached num_steps_per_file_pass'
                 break
 
-    ## SAVE RESULTS
+    # SAVE RESULTS
     train_test_error = train_test_error[range(count), :]
     print(train_test_error)
     params['time_exp'] = time.time() - start
@@ -415,7 +415,7 @@ def savefiles(sess, saver, csvpath, train_test_error, params, weights, biases, e
     params['minRegTrain'] = np.min(train_test_error[:, 2])
     params['minRegTest'] = np.min(train_test_error[:, 3])
     print "min train: %.12f, min test: %.12f, min reg. train: %.12f, min reg. test: %.12f" % (
-    params['minTrain'], params['minTest'], params['minRegTrain'], params['minRegTest'])
+        params['minTrain'], params['minTest'], params['minRegTrain'], params['minRegTest'])
     save_params(params)
 
 
@@ -433,10 +433,10 @@ def set_defaults(params):
         params['first_guess_omega'] = 0
     if 'widths_omega' not in params:
         raise KeyError, "Error, must give widths for omega net"
-    if 'distributionW_omega' not in params:
-        params['distributionW_omega'] = 'tn'
-    if 'distributionB_omega' not in params:
-        params['distributionB_omega'] = 0
+    if 'dist_weights_omega' not in params:
+        params['dist_weights_omega'] = 'tn'
+    if 'dist_biases_omega' not in params:
+        params['dist_biases_omega'] = 0
     if 'scale_omega' not in params:
         params['scale_omega'] = 0.1
     # if 'omega_lam' not in params:
@@ -476,10 +476,10 @@ def set_defaults(params):
         params['reg_inf_lam'] = 0.0
     if 'w' not in params:
         params['w'] = []
-    if 'distributionW' not in params:
-        params['distributionW'] = 'tn'
-    if 'distributionB' not in params:
-        params['distributionB'] = 0
+    if 'dist_weights' not in params:
+        params['dist_weights'] = 'tn'
+    if 'dist_biases' not in params:
+        params['dist_biases'] = 0
     if 'scale' not in params:
         params['scale'] = 0.1
     if 'batch_flag' not in params:
@@ -494,8 +494,8 @@ def set_defaults(params):
         params['num_shifts_middle'] = len(params['shifts_middle'])
     if 'batch_size' not in params:
         params['batch_size'] = 0
-    if 'lenT' not in params:
-        raise KeyError, "Error, must give lenT as input to main"
+    if 'len_time' not in params:
+        raise KeyError, "Error, must give len_time as input to main"
     if 'max_time' not in params:
         params['max_time'] = 0
     if 'l2_lam' not in params:
@@ -559,23 +559,23 @@ def main_exp(params):
         m = params['widths']
         params['widths'] = np.repeat(m, params['d'])
     print params['widths']
-    if isinstance(params['distributionW'], basestring):
+    if isinstance(params['dist_weights'], basestring):
         print("making list of distributions for weights W")
-        params['distributionW'] = [params['distributionW']] * (len(params['widths']) - 1)
-        print params['distributionW']
-    if isinstance(params['distributionB'], int):
+        params['dist_weights'] = [params['dist_weights']] * (len(params['widths']) - 1)
+        print params['dist_weights']
+    if isinstance(params['dist_biases'], int):
         print("making list of distributions for biases b")
-        params['distributionB'] = [params['distributionB']] * (len(params['widths']) - 1)
-        print params['distributionB']
-    if isinstance(params['distributionW_omega'], basestring):
+        params['dist_biases'] = [params['dist_biases']] * (len(params['widths']) - 1)
+        print params['dist_biases']
+    if isinstance(params['dist_weights_omega'], basestring):
         print("making list of distributions for weights W in omega net")
-        params['distributionW_omega'] = [params['distributionW_omega']] * (len(params['widths_omega']) - 1)
-        print params['distributionW_omega']
-    if isinstance(params['distributionB_omega'], int):
+        params['dist_weights_omega'] = [params['dist_weights_omega']] * (len(params['widths_omega']) - 1)
+        print params['dist_weights_omega']
+    if isinstance(params['dist_biases_omega'], int):
         print("making list of distributions for biases b in omega net")
-        params['distributionB_omega'] = [params['distributionB_omega']] * (len(params['widths_omega']) - 1)
-        print params['distributionB_omega']
-    err = TryNet(n, params['data_train_len'], data_test, exp_name, params)
+        params['dist_biases_omega'] = [params['dist_biases_omega']] * (len(params['widths_omega']) - 1)
+        print params['dist_biases_omega']
+    err = try_net(params['data_train_len'], data_test, exp_name, params)
 
     tf.reset_default_graph()
 

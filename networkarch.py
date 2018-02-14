@@ -34,7 +34,7 @@ def bias_variable(shape, varname, distribution=''):
     return tf.Variable(initial, name=varname)
 
 
-def encoder(widths, distribution_w, distribution_b, scale, num_shifts_max, first_guess):
+def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_guess):
     x = tf.placeholder(tf.float64, [num_shifts_max + 1, None, widths[0]])
     # nx1 patch, number of input channels, number of output channels (features)
     # m = number of hidden units
@@ -44,11 +44,11 @@ def encoder(widths, distribution_w, distribution_b, scale, num_shifts_max, first
 
     for i in np.arange(len(widths) - 1):
         weights['WE%d' % (i + 1)] = weight_variable([widths[i], widths[i + 1]], varname='WE%d' % (i + 1),
-                                                    distribution=distribution_w[i], scale=scale,
+                                                    distribution=dist_weights[i], scale=scale,
                                                     first_guess=first_guess)
         # TODO: first guess for biases too (and different ones for different weights)
         biases['bE%d' % (i + 1)] = bias_variable([widths[i + 1], ], varname='bE%d' % (i + 1),
-                                                 distribution=distribution_b[i])
+                                                 distribution=dist_biases[i])
     return x, weights, biases
 
 
@@ -92,16 +92,16 @@ def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, p
     return final
 
 
-def decoder(widths, distribution_w, distribution_b, scale, name='D', first_guess=0):
+def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
     weights = dict()
     biases = dict()
     for i in np.arange(len(widths) - 1):
         ind = i + 1
         weights['W%s%d' % (name, ind)] = weight_variable([widths[i], widths[i + 1]], varname='W%s%d' % (name, ind),
-                                                         distribution=distribution_w[ind - 1], scale=scale,
+                                                         distribution=dist_weights[ind - 1], scale=scale,
                                                          first_guess=first_guess)
         biases['b%s%d' % (name, ind)] = bias_variable([widths[i + 1], ], varname='b%s%d' % (name, ind),
-                                                      distribution=distribution_b[ind - 1])
+                                                      distribution=dist_biases[ind - 1])
     return weights, biases
 
 
@@ -138,6 +138,7 @@ def form_L_stack(omega_output, deltat):
         entry12 = tf.multiply(scale, tf.sin(omega_output[:, 0] * deltat))
         row1 = tf.stack([entry11, -entry12], axis=1)  # [None, 2]
         row2 = tf.stack([entry12, entry11], axis=1)  # [None, 2]
+    # TODO: generalize this function
     Lstack = tf.stack([row1, row2], axis=2)  # [None, 2, 2] put one row below other
     return Lstack
 
@@ -154,9 +155,9 @@ def varying_multiply(y, omegas, deltat):
     return output
 
 
-def CreateOmegaNet(n, phase, keep_prob, params, x):
-    weights, biases = decoder(params['widths_omega'], distribution_w=params['distribution_w_omega'],
-                              distribution_b=params['distribution_b_omega'], scale=params['scale_omega'], name='O',
+def create_omega_net(phase, keep_prob, params, x):
+    weights, biases = decoder(params['widths_omega'], dist_weights=params['dist_weights_omega'],
+                              dist_biases=params['dist_biases_omega'], scale=params['scale_omega'], name='O',
                               first_guess=params['first_guess_omega'])
     g_list = encoder_apply(x, weights, biases, params['act_type'], params['batch_flag'], phase, out_flag=0,
                            shifts_middle=params['shifts_middle'], keep_prob=keep_prob, name='O',
@@ -165,7 +166,7 @@ def CreateOmegaNet(n, phase, keep_prob, params, x):
     return g_list, weights, biases
 
 
-def CreateKoopmanNet(n, phase, keep_prob, params):
+def create_koopman_net(phase, keep_prob, params):
     depth = (params['d'] - 4) / 2  # i.e. 10 or 12 -> 3 or 4
 
     max_shifts_to_stack = 1
@@ -174,27 +175,25 @@ def CreateKoopmanNet(n, phase, keep_prob, params):
     if len(params['shifts_middle']):
         max_shifts_to_stack = max(max_shifts_to_stack, max(params['shifts_middle']))
 
-    encoder_widths = params['widths'][0:depth + 2]  # n ... l
-    x, weights, biases = encoder(encoder_widths, distribution_w=params['distribution_w'][0:depth + 1],
-                                 distribution_b=params['distribution_b'][0:depth + 1], scale=params['scale'],
+    encoder_widths = params['widths'][0:depth + 2]  # n ... nl
+    x, weights, biases = encoder(encoder_widths, dist_weights=params['dist_weights'][0:depth + 1],
+                                 dist_biases=params['dist_biases'][0:depth + 1], scale=params['scale'],
                                  num_shifts_max=max_shifts_to_stack, first_guess=params['first_guess'])
     params['num_encoder_weights'] = len(weights)
     g_list = encoder_apply(x, weights, biases, params['act_type'], params['batch_flag'], phase, out_flag=0,
                            shifts_middle=params['shifts_middle'], keep_prob=keep_prob,
                            num_encoder_weights=params['num_encoder_weights'])
 
-    l = params['widths'][depth + 2]
-    g_list_omega = []
     # g_list_omega is list of omegas, one entry for each middle_shift of x (like g_list)
-    g_list_omega, weights_omega, biases_omega = CreateOmegaNet(n, phase, keep_prob, params, x)
+    g_list_omega, weights_omega, biases_omega = create_omega_net(phase, keep_prob, params, x)
     params['num_omega_weights'] = len(weights_omega)
     weights.update(weights_omega)
     biases.update(biases_omega)
 
     num_widths = len(params['widths'])
-    decoder_widths = params['widths'][depth + 2:num_widths]  # l ... n
-    weights_decoder, biases_decoder = decoder(decoder_widths, distribution_w=params['distribution_w'][depth + 2:],
-                                              distribution_b=params['distribution_b'][depth + 2:],
+    decoder_widths = params['widths'][depth + 2:num_widths]  # nl ... n
+    weights_decoder, biases_decoder = decoder(decoder_widths, dist_weights=params['dist_weights'][depth + 2:],
+                                              dist_biases=params['dist_biases'][depth + 2:],
                                               scale=params['scale'])
     weights.update(weights_decoder)
     biases.update(biases_decoder)
@@ -211,7 +210,7 @@ def CreateKoopmanNet(n, phase, keep_prob, params):
 
     for j in np.arange(max(params['shifts'])):  # loops 0, 1, ...
         # considering penalty on subset of yk+1, yk+2, yk+3, ... yk+20
-        if ((j + 1) in params['shifts']):
+        if (j + 1) in params['shifts']:
             y.append(decoder_apply(advanced_layer, weights, biases, params['act_type'], params['batch_flag'], phase,
                                    keep_prob, params['num_decoder_weights']))
 
@@ -220,6 +219,6 @@ def CreateKoopmanNet(n, phase, keep_prob, params):
     if len(y) != (len(params['shifts']) + 1):
         print "messed up looping over shifts! %r" % params['shifts']
         raise ValueError(
-            'length(y) not proper length: check CreateKoopmanNet code and how defined params[shifts] in experiment')
+            'length(y) not proper length: check create_koopman_net code and how defined params[shifts] in experiment')
 
     return x, y, g_list, weights, biases, g_list_omega
