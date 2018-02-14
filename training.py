@@ -13,15 +13,15 @@ def define_loss(x, y, g_list, g_list_omega, params):
     # subtraction and squaring element-wise, then average over both dimensions
     # n columns
     # average of each row (across columns), then average the rows
-    den_nonzero = 10 ** (-5)
+    denominator_nonzero = 10 ** (-5)
 
     # autoencoder loss
     if params['relative_loss']:
-        loss1den = tf.reduce_mean(tf.reduce_mean(tf.square(tf.squeeze(x[0, :, :])), 1)) + den_nonzero
+        loss1_denominator = tf.reduce_mean(tf.reduce_mean(tf.square(tf.squeeze(x[0, :, :])), 1)) + denominator_nonzero
     else:
-        loss1den = tf.to_double(1.0)
-    loss1 = params['recon_lam'] * tf.truediv(
-        tf.reduce_mean(tf.reduce_mean(tf.square(y[0] - tf.squeeze(x[0, :, :])), 1)), loss1den)
+        loss1_denominator = tf.to_double(1.0)
+    mean_squared_error = tf.reduce_mean(tf.reduce_mean(tf.square(y[0] - tf.squeeze(x[0, :, :])), 1))
+    loss1 = params['recon_lam'] * tf.truediv(mean_squared_error, loss1_denominator)
 
     # gets dynamics
     loss2 = tf.zeros([1, ], dtype=tf.float64)
@@ -30,11 +30,12 @@ def define_loss(x, y, g_list, g_list_omega, params):
             # xk+1, xk+2, xk+3
             shift = params['shifts'][j]
             if params['relative_loss']:
-                loss2den = tf.reduce_mean(tf.reduce_mean(tf.square(tf.squeeze(x[shift, :, :])), 1)) + den_nonzero
+                loss2_denominator = tf.reduce_mean(
+                    tf.reduce_mean(tf.square(tf.squeeze(x[shift, :, :])), 1)) + denominator_nonzero
             else:
-                loss2den = tf.to_double(1.0)
+                loss2_denominator = tf.to_double(1.0)
             loss2 = loss2 + params['recon_lam'] * tf.truediv(
-                tf.reduce_mean(tf.reduce_mean(tf.square(y[j + 1] - tf.squeeze(x[shift, :, :])), 1)), loss2den)
+                tf.reduce_mean(tf.reduce_mean(tf.square(y[j + 1] - tf.squeeze(x[shift, :, :])), 1)), loss2_denominator)
         loss2 = loss2 / params['num_shifts']
 
     # K linear
@@ -47,20 +48,21 @@ def define_loss(x, y, g_list, g_list_omega, params):
                 # multiply g_list[0] by L (j+1) times
                 # next_step = tf.matmul(g_list[0], L_pow)
                 if params['relative_loss']:
-                    loss3den = tf.reduce_mean(
-                        tf.reduce_mean(tf.square(tf.squeeze(g_list[count_shifts_middle + 1])), 1)) + den_nonzero
+                    loss3_denominator = tf.reduce_mean(
+                        tf.reduce_mean(tf.square(tf.squeeze(g_list[count_shifts_middle + 1])), 1)) + denominator_nonzero
                 else:
-                    loss3den = tf.to_double(1.0)
+                    loss3_denominator = tf.to_double(1.0)
                 loss3 = loss3 + params['mid_shift_lam'] * tf.truediv(
-                    tf.reduce_mean(tf.reduce_mean(tf.square(next_step - g_list[count_shifts_middle + 1]), 1)), loss3den)
+                    tf.reduce_mean(tf.reduce_mean(tf.square(next_step - g_list[count_shifts_middle + 1]), 1)),
+                    loss3_denominator)
                 count_shifts_middle += 1
             # hopefully still on correct traj, so same omegas as before
             next_step = net.varying_multiply(next_step, g_list_omega[j + 1], params['delta_t'])
         loss3 = loss3 / params['num_shifts_middle']
 
     # inf norm on autoencoder error
-    Linf1_den = tf.norm(tf.norm(tf.squeeze(x[0, :, :]), axis=1, ord=np.inf), ord=np.inf) + den_nonzero
-    Linf2_den = tf.norm(tf.norm(tf.squeeze(x[1, :, :]), axis=1, ord=np.inf), ord=np.inf) + den_nonzero
+    Linf1_den = tf.norm(tf.norm(tf.squeeze(x[0, :, :]), axis=1, ord=np.inf), ord=np.inf) + denominator_nonzero
+    Linf2_den = tf.norm(tf.norm(tf.squeeze(x[1, :, :]), axis=1, ord=np.inf), ord=np.inf) + denominator_nonzero
     Linf1_penalty = tf.truediv(
         tf.norm(tf.norm(y[0] - tf.squeeze(x[0, :, :]), axis=1, ord=np.inf), ord=np.inf), Linf1_den)
     Linf2_penalty = tf.truediv(
@@ -89,17 +91,13 @@ def define_regularization(params, trainable_var, loss):
     return loss_L1, loss_L2, regularized_loss
 
 
-def try_net(data_train_len, data_val, params):
+def try_net(data_val, params):
     # SET UP NETWORK
     phase = tf.placeholder(tf.bool, name='phase')
     keep_prob = tf.placeholder(tf.float64, shape=[], name='keep_prob')
     x, y, g_list, weights, biases, g_list_omega = net.create_koopman_net(phase, keep_prob, params)
 
-    max_shifts_to_stack = 1
-    if len(params['shifts']):
-        max_shifts_to_stack = max(max_shifts_to_stack, max(params['shifts']))
-    if len(params['shifts_middle']):
-        max_shifts_to_stack = max(max_shifts_to_stack, max(params['shifts_middle']))
+    max_shifts_to_stack = helperfns.num_shifts_in_stack(params)
 
     # DEFINE LOSS FUNCTION
     trainable_var = tf.trainable_variables()
@@ -120,8 +118,8 @@ def try_net(data_train_len, data_val, params):
     csv_path = csv_path.replace('ckpt', 'csv')
     print csv_path
 
-    num_saved = np.floor(
-        (params['num_steps_per_file_pass'] / 20 + 1) * data_train_len * params['num_passes_per_file']).astype(int)
+    num_saved_per_file_pass = params['num_steps_per_file_pass'] / 20 + 1
+    num_saved = np.floor(num_saved_per_file_pass * params['data_train_len'] * params['num_passes_per_file']).astype(int)
     train_val_error = np.zeros([num_saved, 16])
     count = 0
     best_error = 10000
@@ -134,24 +132,24 @@ def try_net(data_train_len, data_val, params):
 
     # TRAINING
     # loop over training data files
-    for f in range(data_train_len * params['num_passes_per_file']):
+    for f in xrange(params['data_train_len'] * params['num_passes_per_file']):
         if finished:
             break
-        file_num = (f % data_train_len) + 1  # 1...data_train_len
+        file_num = (f % params['data_train_len']) + 1  # 1...data_train_len
 
-        if (data_train_len > 1) or (f == 0):
+        if (params['data_train_len'] > 1) or (f == 0):
             # don't keep reloading data if always same
             data_train = np.loadtxt(('./data/%s_train%d_x.csv' % (params['data_name'], file_num)), delimiter=',')
             data_train_tensor = helperfns.stack_data(data_train, max_shifts_to_stack, params['len_time'])
             num_examples = data_train_tensor.shape[1]
-            ind = np.arange(num_examples)
-            np.random.shuffle(ind)
-            data_train_tensor = data_train_tensor[:, ind, :]
-
             num_batches = int(np.floor(num_examples / params['batch_size']))
 
+        ind = np.arange(num_examples)
+        np.random.shuffle(ind)
+        data_train_tensor = data_train_tensor[:, ind, :]
+
         # loop over batches in this file
-        for step in range(params['num_steps_per_batch'] * num_batches):
+        for step in xrange(params['num_steps_per_batch'] * num_batches):
 
             if params['batch_size'] < data_train_tensor.shape[1]:
                 offset = (step * params['batch_size']) % (num_examples - params['batch_size'])
@@ -196,7 +194,7 @@ def try_net(data_train_len, data_val, params):
                 finished, save_now = helperfns.check_progress(start, best_error, params)
                 if save_now:
                     train_val_error_trunc = train_val_error[range(count), :]
-                    helperfns.save_files(sess, saver, csv_path, train_val_error_trunc, params, weights, biases, 0)
+                    helperfns.save_files(sess, saver, csv_path, train_val_error_trunc, params, weights, biases)
                 if finished:
                     break
                 count = count + 1
@@ -209,8 +207,8 @@ def try_net(data_train_len, data_val, params):
     train_val_error = train_val_error[range(count), :]
     print(train_val_error)
     params['time_exp'] = time.time() - start
-    helperfns.save_files(sess, saver, csv_path, train_val_error, params, weights, biases, 1)
-    return np.min(train_val_error[:, 0])
+    saver.restore(sess, params['model_path'])
+    helperfns.save_files(sess, saver, csv_path, train_val_error, params, weights, biases)
 
 
 def main_exp(params):
@@ -221,6 +219,6 @@ def main_exp(params):
 
     # data is num_steps x num_examples x n
     data_val = np.genfromtxt(('./data/%s_val_x.csv' % (params['data_name'])), delimiter=',')
-    err = try_net(params['data_train_len'], data_val, params)
+    try_net(data_val, params)
+
     tf.reset_default_graph()
-    return err

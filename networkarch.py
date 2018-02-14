@@ -1,6 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
+import helperfns
+
 
 def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0):
     if distribution == 'tn':
@@ -119,9 +121,8 @@ def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, phase, keep
         prev_layer = tf.cond(keep_prob < 1.0, lambda: tf.nn.dropout(h1, keep_prob), lambda: h1)
 
     # apply last layer without any nonlinearity
-    final = tf.matmul(prev_layer, weights['WD%d' % num_decoder_weights]) + biases['bD%d' % num_decoder_weights]
+    return tf.matmul(prev_layer, weights['WD%d' % num_decoder_weights]) + biases['bD%d' % num_decoder_weights]
 
-    return final
 
 
 def form_L_stack(omega_output, delta_t):
@@ -143,8 +144,7 @@ def form_L_stack(omega_output, delta_t):
     else:
         raise ValueError('So far, form_L_stack only implemented for omega_output of 1 or 2 columns')
 
-    Lstack = tf.stack([row1, row2], axis=2)  # [None, 2, 2] put one row below other
-    return Lstack
+    return tf.stack([row1, row2], axis=2)  # [None, 2, 2] put one row below other
 
 
 def varying_multiply(y, omegas, delta_t):
@@ -155,8 +155,7 @@ def varying_multiply(y, omegas, delta_t):
     Lstack = form_L_stack(omegas, delta_t)  # [None, 2, 2]
     elmtwise_prod = tf.multiply(ystack, Lstack)
     # add middle dimension (across "columns") i.e. cos(omega*delta_t)*y1 + sin(omega*delta_t)*y2
-    output = tf.reduce_sum(elmtwise_prod, 1)  # [None, 2]
-    return output
+    return tf.reduce_sum(elmtwise_prod, 1)  # [None, 2]
 
 
 def create_omega_net(phase, keep_prob, params, x):
@@ -173,11 +172,7 @@ def create_omega_net(phase, keep_prob, params, x):
 def create_koopman_net(phase, keep_prob, params):
     depth = (params['d'] - 4) / 2  # i.e. 10 or 12 -> 3 or 4
 
-    max_shifts_to_stack = 1
-    if len(params['shifts']):
-        max_shifts_to_stack = max(max_shifts_to_stack, max(params['shifts']))
-    if len(params['shifts_middle']):
-        max_shifts_to_stack = max(max_shifts_to_stack, max(params['shifts_middle']))
+    max_shifts_to_stack = helperfns.num_shifts_in_stack(params)
 
     encoder_widths = params['widths'][0:depth + 2]  # n ... nl
     x, weights, biases = encoder(encoder_widths, dist_weights=params['dist_weights'][0:depth + 1],
@@ -212,8 +207,8 @@ def create_koopman_net(phase, keep_prob, params):
     # g_list_omega[0] is for x[0,:,:], pairs with g_list[0]=encoded_layer
     advanced_layer = varying_multiply(encoded_layer, g_list_omega[0], params['delta_t'])
 
-    for j in np.arange(max(params['shifts'])):  # loops 0, 1, ...
-        # considering penalty on subset of yk+1, yk+2, yk+3, ... yk+20
+    for j in np.arange(max(params['shifts'])):
+        # considering penalty on subset of yk+1, yk+2, yk+3, ...
         if (j + 1) in params['shifts']:
             y.append(decoder_apply(advanced_layer, weights, biases, params['act_type'], params['batch_flag'], phase,
                                    keep_prob, params['num_decoder_weights']))

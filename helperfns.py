@@ -32,19 +32,23 @@ def choose_optimizer(params, regularized_loss, trainable_var):
         optimizer = tf.train.AdamOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
     elif params['opt_alg'] == 'adadelta':
         if params['decay_rate'] > 0:
-            optimizer = tf.train.AdadeltaOptimizer(params['learning_rate'], params['decay_rate']).minimize(regularized_loss,
-                                                                                                var_list=trainable_var)
+            optimizer = tf.train.AdadeltaOptimizer(params['learning_rate'], params['decay_rate']).minimize(
+                regularized_loss,
+                var_list=trainable_var)
         else:
             # defaults 0.001, 0.95
-            optimizer = tf.train.AdadeltaOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
+            optimizer = tf.train.AdadeltaOptimizer(params['learning_rate']).minimize(regularized_loss,
+                                                                                     var_list=trainable_var)
     elif params['opt_alg'] == 'adagrad':
         # also has initial_accumulator_value parameter
-        optimizer = tf.train.AdagradOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
+        optimizer = tf.train.AdagradOptimizer(params['learning_rate']).minimize(regularized_loss,
+                                                                                var_list=trainable_var)
     elif params['opt_alg'] == 'adagradDA':
         # Be careful when using AdagradDA for deep networks as it will require careful initialization of the gradient
         # accumulators for it to train.
-        optimizer = tf.train.AdagradDAOptimizer(params['learning_rate'], tf.get_global_step()).minimize(regularized_loss,
-                                                                                             var_list=trainable_var)
+        optimizer = tf.train.AdagradDAOptimizer(params['learning_rate'], tf.get_global_step()).minimize(
+            regularized_loss,
+            var_list=trainable_var)
     elif params['opt_alg'] == 'ftrl':
         # lots of hyperparameters: learning_rate_power, initial_accumulator_value,
         # l1_regularization_strength, l2_regularization_strength
@@ -52,18 +56,21 @@ def choose_optimizer(params, regularized_loss, trainable_var):
     elif params['opt_alg'] == 'proximalGD':
         # can have built-in reg.
         optimizer = tf.train.ProximalGradientDescentOptimizer(params['learning_rate']).minimize(regularized_loss,
-                                                                                     var_list=trainable_var)
+                                                                                                var_list=trainable_var)
     elif params['opt_alg'] == 'proximalAdagrad':
         # initial_accumulator_value, reg.
-        optimizer = tf.train.ProximalAdagradOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
+        optimizer = tf.train.ProximalAdagradOptimizer(params['learning_rate']).minimize(regularized_loss,
+                                                                                        var_list=trainable_var)
     elif params['opt_alg'] == 'RMS':
         # momentum, epsilon, centered (False/True)
         if params['decay_rate'] > 0:
-            optimizer = tf.train.RMSPropOptimizer(params['learning_rate'], params['decay_rate']).minimize(regularized_loss,
-                                                                                               var_list=trainable_var)
+            optimizer = tf.train.RMSPropOptimizer(params['learning_rate'], params['decay_rate']).minimize(
+                regularized_loss,
+                var_list=trainable_var)
         else:
             # default decay_rate 0.9
-            optimizer = tf.train.RMSPropOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
+            optimizer = tf.train.RMSPropOptimizer(params['learning_rate']).minimize(regularized_loss,
+                                                                                    var_list=trainable_var)
     else:
         raise ValueError("chose invalid opt_alg %s in params dict" % params['opt_alg'])
     return optimizer
@@ -177,10 +184,8 @@ def check_progress(start, best_error, params):
     return finished, save_now
 
 
-def save_files(sess, saver, csv_path, train_val_error, params, weights, biases, end_flag):
+def save_files(sess, saver, csv_path, train_val_error, params, weights, biases):
     np.savetxt(csv_path, train_val_error, delimiter=',')
-    if end_flag:
-        saver.restore(sess, params['model_path'])
 
     for key, value in weights.iteritems():
         np.savetxt(csv_path.replace('error', key), np.asarray(sess.run(value)), delimiter=',')
@@ -371,3 +376,13 @@ def set_defaults(params):
     params['been3hr'] = 0
     params['been4hr'] = 0
     params['beenHalf'] = 0
+
+
+def num_shifts_in_stack(params):
+    max_shifts_to_stack = 1
+    if params['num_shifts']:
+        max_shifts_to_stack = max(max_shifts_to_stack, max(params['shifts']))
+    if params['num_shifts_middle']:
+        max_shifts_to_stack = max(max_shifts_to_stack, max(params['shifts_middle']))
+
+    return max_shifts_to_stack
