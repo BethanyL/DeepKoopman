@@ -238,8 +238,8 @@ def set_defaults(params):
         print("setting default: no batch normalization")
         params['batch_flag'] = 0
 
-    params['d'] = len(params['widths']) # d must be calculated like this
-    params['do'] = len(params['widths_omega']) # do must be calculated like this
+    params['d'] = len(params['widths'])  # d must be calculated like this
+    params['do'] = len(params['widths_omega'])  # do must be calculated like this
     print params['widths']
     print params['widths_omega']
 
@@ -291,8 +291,8 @@ def set_defaults(params):
     if 'shifts_middle' not in params:
         print("setting default: penalty on all middle shifts from 1 to num_shifts_middle")
         params['shifts_middle'] = np.arange(params['num_shifts_middle']) + 1
-    params['num_shifts'] = len(params['shifts']) # must be calculated like this
-    params['num_shifts_middle'] = len(params['shifts_middle']) # must be calculated like this
+    params['num_shifts'] = len(params['shifts'])  # must be calculated like this
+    params['num_shifts_middle'] = len(params['shifts_middle'])  # must be calculated like this
 
     if 'recon_lam' not in params:
         print("setting default: weight on reconstruction is 1.0")
