@@ -209,6 +209,10 @@ def set_defaults(params):
         raise KeyError("Error: must give data_name as input to main")
     if 'len_time' not in params:
         raise KeyError("Error, must give len_time as input to main")
+    if 'data_train_len' not in params:
+        raise KeyError("Error, must give data_train_len as input to main")
+    if 'delta_t' not in params:
+        raise KeyError("Error, must give delta_t as input to main")
 
     # defaults related to saving results
     if 'folder_name' not in params:
@@ -227,9 +231,6 @@ def set_defaults(params):
         raise KeyError("Error, must give widths as input to main")
     if 'widths_omega' not in params:
         raise KeyError("Error, must give widths for omega net")
-    if 'd' not in params:
-        print("setting default: d is number of widths")
-        params['d'] = len(params['widths'])
     if 'act_type' not in params:
         print("setting default: activation function is ReLU")
         params['act_type'] = 'relu'
@@ -237,32 +238,32 @@ def set_defaults(params):
         print("setting default: no batch normalization")
         params['batch_flag'] = 0
 
-    # can pass list of lists (widths for each layer) or list of ints (all layers have same width)
-    if isinstance(params['widths'], int):
-        m = params['widths']
-        params['widths'] = np.repeat(m, params['d'])
+    params['d'] = len(params['widths']) # d must be calculated like this
+    params['do'] = len(params['widths_omega']) # do must be calculated like this
     print params['widths']
     print params['widths_omega']
 
     # defaults related to initialization of parameters
+    if 'dist_weights' not in params:
+        print("setting default: distribution for weights on main net is dl")
+        params['dist_weights'] = 'dl'
     if 'dist_weights_omega' not in params:
-        print("setting default: distribution for weights on omega net is tn")
-        params['dist_weights_omega'] = 'tn'
+        print("setting default: distribution for weights on omega net is dl")
+        params['dist_weights_omega'] = 'dl'
+    if 'dist_biases' not in params:
+        print("setting default: initialize biases for main net to 0")
+        params['dist_biases'] = 0
     if 'dist_biases_omega' not in params:
         print("setting default: initialize biases for omega net to 0")
         params['dist_biases_omega'] = 0
+
     if 'first_guess' not in params:
         print("setting default: no first guess for main network")
         params['first_guess'] = 0
     if 'first_guess_omega' not in params:
         print("setting default: no first guess for omega net")
         params['first_guess_omega'] = 0
-    if 'dist_weights' not in params:
-        print("setting default: distribution for weights on main net is tn")
-        params['dist_weights'] = 'tn'
-    if 'dist_biases' not in params:
-        print("setting default: initialize biases for main net to 0")
-        params['dist_biases'] = 0
+
     if 'scale' not in params:
         print("setting default: scale for weights in main net is 0.1 (applies to tn distribution)")
         params['scale'] = 0.1
@@ -283,19 +284,22 @@ def set_defaults(params):
     if 'relative_loss' not in params:
         print("setting default: loss is not relative")
         params['relative_loss'] = 0
-    if 'recon_lam' not in params:
-        print("setting default: weight on reconstruction is 1.0")
-        params['recon_lam'] = 1.0
+
     if 'shifts' not in params:
         print("setting default: penalty on all shifts from 1 to num_shifts")
         params['shifts'] = np.arange(params['num_shifts']) + 1
     if 'shifts_middle' not in params:
         print("setting default: penalty on all middle shifts from 1 to num_shifts_middle")
         params['shifts_middle'] = np.arange(params['num_shifts_middle']) + 1
-    if 'num_shifts' not in params:
-        params['num_shifts'] = len(params['shifts'])
-    if 'num_shifts_middle' not in params:
-        params['num_shifts_middle'] = len(params['shifts_middle'])
+    params['num_shifts'] = len(params['shifts']) # must be calculated like this
+    params['num_shifts_middle'] = len(params['shifts_middle']) # must be calculated like this
+
+    if 'recon_lam' not in params:
+        print("setting default: weight on reconstruction is 1.0")
+        params['recon_lam'] = 1.0
+    if 'mid_shift_lam' not in params:
+        print("setting default: weight on loss3 is 1.0")
+        params['mid_shift_lam'] = 1.0
     if 'L1_lam' not in params:
         print("setting default: L1_lam is .00001")
         params['L1_lam'] = .00001
@@ -360,9 +364,6 @@ def set_defaults(params):
     if 'minHalfway' not in params:
         params['minHalfway'] = 10 ** (-4)
         print("setting default: must reach %f in first half of time allotted" % params['minHalfway'])
-    if 'mid_shift_lam' not in params:
-        print("setting default: weight on loss3 is 1.0")
-        params['mid_shift_lam'] = 1.0
 
     # initializing trackers for how long the training has run
     params['been5min'] = 0
