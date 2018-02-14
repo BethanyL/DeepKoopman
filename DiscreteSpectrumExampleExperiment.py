@@ -8,7 +8,7 @@ params = {}
 # settings related to dataset
 params['data_name'] = 'DiscreteSpectrumExample'
 params['len_time'] = 51
-n = 2
+n = 2  # dimension of system (and input layer)
 params['data_train_len'] = 10
 num_initial_conditions = 29400  # per training file (10 training data files)
 params['delta_t'] = 0.02
@@ -17,9 +17,9 @@ params['delta_t'] = 0.02
 params['folder_name'] = 'exp1'
 
 # settings related to network architecture
-w = 100
-L = 2
-params['widths'] = [n, w, w, w, L, L, w, w, w, n]
+w = 100  # width of hidden layers in encoder and decoder
+k = 2  # dimension of y-coordinates 
+params['widths'] = [n, w, w, w, k, k, w, w, w, n]
 params['widths_omega'] = [2, w, w, w, 1]
 
 # settings related to loss function
@@ -29,11 +29,11 @@ params['Linf_lam'] = 10 ** (-6)
 # settings related to the training
 params['num_passes_per_file'] = 15 * 4
 params['num_steps_per_batch'] = 2
-params['lr'] = 10 ** (-3)
+params['learning_rate'] = 10 ** (-3)
 
 # settings related to the timing
 params['max_time'] = 4 * 60 * 60  # 4 hours
-params['minHalfway'] = 10 ** (-5)
+params['min_halfway'] = 10 ** (-5)
 
 for count in range(200):
     params['num_shifts_middle'] = r.randint(5, params['len_time'] - 1)
