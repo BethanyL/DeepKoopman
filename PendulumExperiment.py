@@ -39,7 +39,6 @@ params['min3hr'] = 10 ** (-6.7)
 params['min4hr'] = 10 ** (-7.0)
 params['minHalfway'] = 10 ** (-6.7)
 
-
 for count in range(200):
     params['num_shifts_middle'] = r.randint(48, 50)
     max_shifts = max(params['num_shifts'], params['num_shifts_middle'])
