@@ -1,7 +1,7 @@
 import copy
 import random as r
 
-import training as t
+import training
 
 params = {}
 
@@ -55,4 +55,4 @@ for count in range(200):
     params['widths'] = [n, w, w, w, w, L, L, w, w, w, w, n]
     params['widths_omega'] = [2, w, w, w, w, 1]
 
-    t.main_exp(copy.deepcopy(params))
+    training.main_exp(copy.deepcopy(params))
