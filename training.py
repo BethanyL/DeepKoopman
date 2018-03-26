@@ -9,6 +9,7 @@ import networkarch as net
 
 
 def define_loss(x, y, g_list, g_list_omega, params):
+    """Define the (unregularized) loss functions for the training."""
     # Minimize the mean squared errors.
     # subtraction and squaring element-wise, then average over both dimensions
     # n columns
@@ -75,6 +76,7 @@ def define_loss(x, y, g_list, g_list_omega, params):
 
 
 def define_regularization(params, trainable_var, loss):
+    """Define the regularization and add to loss."""
     if params['L1_lam']:
         l1_regularizer = tf.contrib.layers.l1_regularizer(scale=params['L1_lam'], scope=None)
         # TODO: don't include biases? use weights dict instead?
@@ -92,6 +94,7 @@ def define_regularization(params, trainable_var, loss):
 
 
 def try_net(data_val, params):
+    """Run a random experiment for particular params and data."""
     # SET UP NETWORK
     phase = tf.placeholder(tf.bool, name='phase')
     keep_prob = tf.placeholder(tf.float64, shape=[], name='keep_prob')
@@ -212,6 +215,7 @@ def try_net(data_val, params):
 
 
 def main_exp(params):
+    """Set up and run one random experiment."""
     helperfns.set_defaults(params)
 
     if not os.path.exists(params['folder_name']):

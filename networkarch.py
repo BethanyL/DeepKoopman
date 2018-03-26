@@ -5,6 +5,7 @@ import helperfns
 
 
 def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0):
+    """Create a variable for a weight matrix."""
     if distribution == 'tn':
         initial = tf.truncated_normal(shape, stddev=scale, dtype=tf.float64) + first_guess
     elif distribution == 'xavier':
@@ -29,6 +30,7 @@ def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0
 
 
 def bias_variable(shape, var_name, distribution=''):
+    """Create a variable for a bias vector."""
     if distribution:
         initial = np.genfromtxt(distribution, delimiter=',', dtype=np.float64)
     else:
@@ -37,6 +39,7 @@ def bias_variable(shape, var_name, distribution=''):
 
 
 def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_guess):
+    """Create an encoder network: an input placeholder x, dictionary of weights, and dictionary of biases."""
     x = tf.placeholder(tf.float64, [num_shifts_max + 1, None, widths[0]])
     # nx1 patch, number of input channels, number of output channels (features)
     # m = number of hidden units
@@ -56,6 +59,7 @@ def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_gues
 
 def encoder_apply(x, weights, biases, act_type, batch_flag, phase, out_flag, shifts_middle, keep_prob, name='E',
                   num_encoder_weights=1):
+    """Apply an encoder to data x."""
     y = []
     num_shifts_middle = len(shifts_middle)
     for j in np.arange(num_shifts_middle + 1):
@@ -72,6 +76,7 @@ def encoder_apply(x, weights, biases, act_type, batch_flag, phase, out_flag, shi
 
 def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, phase, out_flag, keep_prob, name='E',
                             num_encoder_weights=1):
+    """Apply an encoder to data for only one time step (shift)."""
     for i in np.arange(num_encoder_weights - 1):
         h1 = tf.matmul(prev_layer, weights['W%s%d' % (name, i + 1)]) + biases['b%s%d' % (name, i + 1)]
         if batch_flag:
@@ -95,6 +100,7 @@ def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, p
 
 
 def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
+    """Create a decoder network: a dictionary of weights and a dictionary of biases."""
     weights = dict()
     biases = dict()
     for i in np.arange(len(widths) - 1):
@@ -108,6 +114,7 @@ def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
 
 
 def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, phase, keep_prob, num_decoder_weights):
+    """Apply a decoder to data prev_layer"""
     for i in np.arange(num_decoder_weights - 1):
         h1 = tf.matmul(prev_layer, weights['WD%d' % (i + 1)]) + biases['bD%d' % (i + 1)]
         if batch_flag:
@@ -124,8 +131,8 @@ def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, phase, keep
     return tf.matmul(prev_layer, weights['WD%d' % num_decoder_weights]) + biases['bD%d' % num_decoder_weights]
 
 
-
 def form_L_stack(omega_output, delta_t):
+    """Create a stack (tensor) of L matrices of shape [num_examples, l, l]"""
     # encoded_layer is [None, 2]
     # omega_output is [None, 1]
     if omega_output.shape[1] == 1:
@@ -148,6 +155,7 @@ def form_L_stack(omega_output, delta_t):
 
 
 def varying_multiply(y, omegas, delta_t):
+    """Multiply by varying matrix L to advance one step in time."""
     # multiply on the left: y*omegas
 
     # y is [None, 2] and omegas is [None, 1]
@@ -159,6 +167,7 @@ def varying_multiply(y, omegas, delta_t):
 
 
 def create_omega_net(phase, keep_prob, params, x):
+    """Create a network that learns parameters for L."""
     weights, biases = decoder(params['widths_omega'], dist_weights=params['dist_weights_omega'],
                               dist_biases=params['dist_biases_omega'], scale=params['scale_omega'], name='O',
                               first_guess=params['first_guess_omega'])
@@ -170,6 +179,7 @@ def create_omega_net(phase, keep_prob, params, x):
 
 
 def create_koopman_net(phase, keep_prob, params):
+    """Create a Koopman network that encodes, advances in time, and decodes."""
     depth = (params['d'] - 4) / 2  # i.e. 10 or 12 -> 3 or 4
 
     max_shifts_to_stack = helperfns.num_shifts_in_stack(params)

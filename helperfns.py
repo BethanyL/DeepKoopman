@@ -7,6 +7,7 @@ import tensorflow as tf
 
 
 def stack_data(data, num_shifts, len_time):
+    """Stack data from a matrix into a tensor."""
     nd = data.ndim
     if nd > 1:
         n = data.shape[1]
@@ -28,6 +29,7 @@ def stack_data(data, num_shifts, len_time):
 
 
 def choose_optimizer(params, regularized_loss, trainable_var):
+    """Choose which optimizer to use for the network training."""
     if params['opt_alg'] == 'adam':
         optimizer = tf.train.AdamOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
     elif params['opt_alg'] == 'adadelta':
@@ -77,6 +79,7 @@ def choose_optimizer(params, regularized_loss, trainable_var):
 
 
 def check_progress(start, best_error, params):
+    """Check on the progress of the network training and decide if it's time to stop."""
     finished = 0
     save_now = 0
 
@@ -185,6 +188,7 @@ def check_progress(start, best_error, params):
 
 
 def save_files(sess, saver, csv_path, train_val_error, params, weights, biases):
+    """Save error files, weights, biases, and parameters"""
     np.savetxt(csv_path, train_val_error, delimiter=',')
 
     for key, value in weights.iteritems():
@@ -201,11 +205,13 @@ def save_files(sess, saver, csv_path, train_val_error, params, weights, biases):
 
 
 def save_params(params):
+    """Save parameter dictionary to file."""
     with open(params['model_path'].replace('ckpt', 'pkl'), 'wb') as f:
         pickle.dump(params, f, pickle.HIGHEST_PROTOCOL)
 
 
 def set_defaults(params):
+    """Set defaults and make some checks in parameters dictionary."""
     # defaults related to dataset
     if 'data_name' not in params:
         raise KeyError("Error: must give data_name as input to main")
@@ -379,6 +385,7 @@ def set_defaults(params):
 
 
 def num_shifts_in_stack(params):
+    """Calculate how many time points (shifts) will be used in loss functions."""
     max_shifts_to_stack = 1
     if params['num_shifts']:
         max_shifts_to_stack = max(max_shifts_to_stack, max(params['shifts']))
