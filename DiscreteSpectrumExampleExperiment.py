@@ -35,7 +35,7 @@ params['learning_rate'] = 10 ** (-3)
 params['max_time'] = 4 * 60 * 60  # 4 hours
 params['min_halfway'] = 10 ** (-5)
 
-for count in range(200): # loop to do random experiments
+for count in range(200):  # loop to do random experiments
     params['num_shifts_middle'] = r.randint(5, params['len_time'] - 1)
     max_shifts = max(params['num_shifts'], params['num_shifts_middle'])
     num_examples = num_initial_conditions * (params['len_time'] - max_shifts)

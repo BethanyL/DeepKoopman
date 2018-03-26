@@ -187,7 +187,7 @@ def check_progress(start, best_error, params):
     return finished, save_now
 
 
-def save_files(sess, saver, csv_path, train_val_error, params, weights, biases):
+def save_files(sess, csv_path, train_val_error, params, weights, biases):
     """Save error files, weights, biases, and parameters"""
     np.savetxt(csv_path, train_val_error, delimiter=',')
 

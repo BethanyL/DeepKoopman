@@ -197,7 +197,7 @@ def try_net(data_val, params):
                 finished, save_now = helperfns.check_progress(start, best_error, params)
                 if save_now:
                     train_val_error_trunc = train_val_error[range(count), :]
-                    helperfns.save_files(sess, saver, csv_path, train_val_error_trunc, params, weights, biases)
+                    helperfns.save_files(sess, csv_path, train_val_error_trunc, params, weights, biases)
                 if finished:
                     break
                 count = count + 1
@@ -211,7 +211,7 @@ def try_net(data_val, params):
     print(train_val_error)
     params['time_exp'] = time.time() - start
     saver.restore(sess, params['model_path'])
-    helperfns.save_files(sess, saver, csv_path, train_val_error, params, weights, biases)
+    helperfns.save_files(sess, csv_path, train_val_error, params, weights, biases)
 
 
 def main_exp(params):
