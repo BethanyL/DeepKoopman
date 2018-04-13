@@ -41,8 +41,6 @@ def bias_variable(shape, var_name, distribution=''):
 def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_guess):
     """Create an encoder network: an input placeholder x, dictionary of weights, and dictionary of biases."""
     x = tf.placeholder(tf.float64, [num_shifts_max + 1, None, widths[0]])
-    # nx1 patch, number of input channels, number of output channels (features)
-    # m = number of hidden units
 
     weights = dict()
     biases = dict()
@@ -133,8 +131,9 @@ def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, phase, keep
 
 def form_L_stack(omega_output, delta_t):
     """Create a stack (tensor) of L matrices of shape [num_examples, l, l]"""
-    # encoded_layer is [None, 2]
-    # omega_output is [None, 1]
+    # omega_output is [None, 1] or [None, 2]
+    # TODO: generalize this function
+
     if omega_output.shape[1] == 1:
         entry11 = tf.cos(omega_output * delta_t)
         entry12 = tf.sin(omega_output * delta_t)
@@ -147,7 +146,7 @@ def form_L_stack(omega_output, delta_t):
         entry12 = tf.multiply(scale, tf.sin(omega_output[:, 0] * delta_t))
         row1 = tf.stack([entry11, -entry12], axis=1)  # [None, 2]
         row2 = tf.stack([entry12, entry11], axis=1)  # [None, 2]
-    # TODO: generalize this function
+
     else:
         raise ValueError('So far, form_L_stack only implemented for omega_output of 1 or 2 columns')
 
@@ -180,7 +179,7 @@ def create_omega_net(phase, keep_prob, params, x):
 
 def create_koopman_net(phase, keep_prob, params):
     """Create a Koopman network that encodes, advances in time, and decodes."""
-    depth = (params['d'] - 4) / 2  # i.e. 10 or 12 -> 3 or 4
+    depth = (params['d'] - 4) / 2
 
     max_shifts_to_stack = helperfns.num_shifts_in_stack(params)
 

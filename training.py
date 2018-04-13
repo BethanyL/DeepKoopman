@@ -43,11 +43,11 @@ def define_loss(x, y, g_list, g_list_omega, params):
     loss3 = tf.zeros([1, ], dtype=tf.float64)
     count_shifts_middle = 0
     if params['num_shifts_middle'] > 0:
+        # generalization of: next_step = tf.matmul(g_list[0], L_pow)
         next_step = net.varying_multiply(g_list[0], g_list_omega[0], params['delta_t'])
+        # multiply g_list[0] by L (j+1) times
         for j in np.arange(max(params['shifts_middle'])):
             if (j + 1) in params['shifts_middle']:
-                # multiply g_list[0] by L (j+1) times
-                # next_step = tf.matmul(g_list[0], L_pow)
                 if params['relative_loss']:
                     loss3_denominator = tf.reduce_mean(
                         tf.reduce_mean(tf.square(tf.squeeze(g_list[count_shifts_middle + 1])), 1)) + denominator_nonzero
@@ -221,7 +221,7 @@ def main_exp(params):
     if not os.path.exists(params['folder_name']):
         os.makedirs(params['folder_name'])
 
-    # data is num_steps x num_examples x n
+    # data is num_steps x num_examples x n but load flattened version (matrix instead of tensor)
     data_val = np.genfromtxt(('./data/%s_val_x.csv' % (params['data_name'])), delimiter=',')
     try_net(data_val, params)
 
