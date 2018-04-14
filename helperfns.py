@@ -191,9 +191,9 @@ def save_files(sess, csv_path, train_val_error, params, weights, biases):
     """Save error files, weights, biases, and parameters"""
     np.savetxt(csv_path, train_val_error, delimiter=',')
 
-    for key, value in weights.iteritems():
+    for key, value in weights.items():
         np.savetxt(csv_path.replace('error', key), np.asarray(sess.run(value)), delimiter=',')
-    for key, value in biases.iteritems():
+    for key, value in biases.items():
         np.savetxt(csv_path.replace('error', key), np.asarray(sess.run(value)), delimiter=',')
     params['minTrain'] = np.min(train_val_error[:, 0])
     params['minTest'] = np.min(train_val_error[:, 1])
