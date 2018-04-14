@@ -44,7 +44,8 @@ def define_loss(x, y, g_list, g_list_omega, params):
     count_shifts_middle = 0
     if params['num_shifts_middle'] > 0:
         # generalization of: next_step = tf.matmul(g_list[0], L_pow)
-        next_step = net.varying_multiply(g_list[0], g_list_omega[0], params['delta_t'])
+        next_step = net.varying_multiply(g_list[0], g_list_omega[0], params['delta_t'], params['num_real'],
+                                         params['num_complex_pairs'])
         # multiply g_list[0] by L (j+1) times
         for j in np.arange(max(params['shifts_middle'])):
             if (j + 1) in params['shifts_middle']:
@@ -58,7 +59,8 @@ def define_loss(x, y, g_list, g_list_omega, params):
                     loss3_denominator)
                 count_shifts_middle += 1
             # hopefully still on correct traj, so same omegas as before
-            next_step = net.varying_multiply(next_step, g_list_omega[j + 1], params['delta_t'])
+            next_step = net.varying_multiply(next_step, g_list_omega[j + 1], params['delta_t'], params['num_real'],
+                                             params['num_complex_pairs'])
         loss3 = loss3 / params['num_shifts_middle']
 
     # inf norm on autoencoder error

@@ -129,40 +129,48 @@ def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, phase, keep
     return tf.matmul(prev_layer, weights['WD%d' % num_decoder_weights]) + biases['bD%d' % num_decoder_weights]
 
 
-def form_L_stack(omega_output, delta_t):
-    """Create a stack (tensor) of L matrices of shape [num_examples, l, l]"""
-    # omega_output is [None, 1] or [None, 2]
-    # TODO: generalize this function
-
-    if omega_output.shape[1] == 1:
-        entry11 = tf.cos(omega_output * delta_t)
-        entry12 = tf.sin(omega_output * delta_t)
-        row1 = tf.concat([entry11, -entry12], axis=1)  # [None, 2]
-        row2 = tf.concat([entry12, entry11], axis=1)  # [None, 2]
-
-    elif omega_output.shape[1] == 2:
-        scale = tf.exp(omega_output[:, 1] * delta_t)
-        entry11 = tf.multiply(scale, tf.cos(omega_output[:, 0] * delta_t))
-        entry12 = tf.multiply(scale, tf.sin(omega_output[:, 0] * delta_t))
-        row1 = tf.stack([entry11, -entry12], axis=1)  # [None, 2]
-        row2 = tf.stack([entry12, entry11], axis=1)  # [None, 2]
-
-    else:
-        raise ValueError('So far, form_L_stack only implemented for omega_output of 1 or 2 columns')
-
+def form_complex_conjugate_block(omegas, delta_t):
+    scale = tf.exp(omegas[:, 1] * delta_t)
+    entry11 = tf.multiply(scale, tf.cos(omegas[:, 0] * delta_t))
+    entry12 = tf.multiply(scale, tf.sin(omegas[:, 0] * delta_t))
+    row1 = tf.stack([entry11, -entry12], axis=1)  # [None, 2]
+    row2 = tf.stack([entry12, entry11], axis=1)  # [None, 2]
     return tf.stack([row1, row2], axis=2)  # [None, 2, 2] put one row below other
 
 
-def varying_multiply(y, omegas, delta_t):
-    """Multiply by varying matrix L to advance one step in time."""
+def varying_multiply(y, omegas, delta_t, num_real, num_complex_pairs):
     # multiply on the left: y*omegas
+    k = y.shape[1]
+    complex_list = []
 
-    # y is [None, 2] and omegas is [None, 1]
-    ystack = tf.stack([y, y], axis=2)  # [None, 2, 2] put one row below other
-    Lstack = form_L_stack(omegas, delta_t)  # [None, 2, 2]
-    elmtwise_prod = tf.multiply(ystack, Lstack)
-    # add middle dimension (across "columns") i.e. cos(omega*delta_t)*y1 + sin(omega*delta_t)*y2
-    return tf.reduce_sum(elmtwise_prod, 1)  # [None, 2]
+    # first, Jordan blocks for each pair of complex conjugate eigenvalues
+    for j in np.arange(num_complex_pairs):
+        ind = 2 * j
+        ystack = tf.stack([y[:, ind:ind + 2], y[:, ind:ind + 2]], axis=2)  # [None, 2, 2]
+        L_stack = form_complex_conjugate_block(omegas[j], delta_t)
+        elmtwise_prod = tf.multiply(ystack, L_stack)
+        complex_list.append(tf.reduce_sum(elmtwise_prod, 1))
+
+    if len(complex_list):
+        # each element in list output_list is shape [None, 2]
+        complex_part = tf.concat(complex_list, axis=1)
+
+    # next, diagonal structure for each real eigenvalue
+    # faster to not explicitly create stack of diagonal matrices L
+    real_list = []
+    for j in np.arange(num_real):
+        ind = 2 * num_complex_pairs + j
+        temp = y[:, ind]
+        real_list.append(tf.multiply(temp[:, np.newaxis], tf.exp(omegas[num_complex_pairs + j] * delta_t)))
+
+    if len(real_list):
+        real_part = tf.concat(real_list, axis=1)
+    if len(complex_list) and len(real_list):
+        return tf.concat([complex_part, real_part], axis=1)
+    elif len(complex_list):
+        return complex_part
+    else:
+        return real_part
 
 
 def create_omega_net(phase, keep_prob, params, x):
@@ -214,7 +222,8 @@ def create_koopman_net(phase, keep_prob, params):
                            params['num_decoder_weights']))
 
     # g_list_omega[0] is for x[0,:,:], pairs with g_list[0]=encoded_layer
-    advanced_layer = varying_multiply(encoded_layer, g_list_omega[0], params['delta_t'])
+    advanced_layer = varying_multiply(encoded_layer, g_list_omega[0], params['delta_t'], params['num_real'],
+                                      params['num_complex_pairs'])
 
     for j in np.arange(max(params['shifts'])):
         # considering penalty on subset of yk+1, yk+2, yk+3, ...
@@ -222,7 +231,8 @@ def create_koopman_net(phase, keep_prob, params):
             y.append(decoder_apply(advanced_layer, weights, biases, params['act_type'], params['batch_flag'], phase,
                                    keep_prob, params['num_decoder_weights']))
 
-        advanced_layer = varying_multiply(advanced_layer, g_list_omega[j + 1], params['delta_t'])
+        advanced_layer = varying_multiply(advanced_layer, g_list_omega[j + 1], params['delta_t'], params['num_real'],
+                                          params['num_complex_pairs'])
 
     if len(y) != (len(params['shifts']) + 1):
         print("messed up looping over shifts! %r" % params['shifts'])

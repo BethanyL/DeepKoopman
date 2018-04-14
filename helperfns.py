@@ -245,6 +245,10 @@ def set_defaults(params):
     if 'batch_flag' not in params:
         print("setting default: no batch normalization")
         params['batch_flag'] = 0
+    if 'num_real' not in params:
+        raise KeyError("Error, must give number of real eigenvalues: num_real")
+    if 'num_complex_pairs' not in params:
+        raise KeyError("Error, must give number of pairs of complex eigenvalues: num_complex_pairs")
 
     params['d'] = len(params['widths'])  # d must be calculated like this
     params['do'] = len(params['widths_omega'])  # do must be calculated like this
