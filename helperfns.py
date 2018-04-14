@@ -95,7 +95,7 @@ def check_progress(start, best_error, params):
                 return finished, save_now
             else:
                 print("been 5 minutes, err = %.15f < %.15f" % (best_error, params['min_5min']))
-                params['been5min'] = 1
+                params['been5min'] = best_error
     if not params['been20min']:
         # only check 20 min progress once
         if current_time - start > 20 * 60:
@@ -106,7 +106,7 @@ def check_progress(start, best_error, params):
                 return finished, save_now
             else:
                 print("been 20 minutes, err = %.15f < %.15f" % (best_error, params['min_20min']))
-                params['been20min'] = 1
+                params['been20min'] = best_error
     if not params['been40min']:
         # only check 40 min progress once
         if current_time - start > 40 * 60:
@@ -117,7 +117,7 @@ def check_progress(start, best_error, params):
                 return finished, save_now
             else:
                 print("been 40 minutes, err = %.15f < %.15f" % (best_error, params['min_40min']))
-                params['been40min'] = 1
+                params['been40min'] = best_error
     if not params['been1hr']:
         # only check 1 hr progress once
         if current_time - start > 60 * 60:
@@ -129,7 +129,7 @@ def check_progress(start, best_error, params):
             else:
                 print("been 1 hour, err = %.15f < %.15f" % (best_error, params['min_1hr']))
                 save_now = 1
-                params['been1hr'] = 1
+                params['been1hr'] = best_error
     if not params['been2hr']:
         # only check 2 hr progress once
         if current_time - start > 2 * 60 * 60:
@@ -141,7 +141,7 @@ def check_progress(start, best_error, params):
             else:
                 print("been 2 hours, err = %.15f < %.15f" % (best_error, params['min_2hr']))
                 save_now = 1
-                params['been2hr'] = 1
+                params['been2hr'] = best_error
     if not params['been3hr']:
         # only check 3 hr progress once
         if current_time - start > 3 * 60 * 60:
@@ -153,7 +153,7 @@ def check_progress(start, best_error, params):
             else:
                 print("been 3 hours, err = %.15f < %.15f" % (best_error, params['min_3hr']))
                 save_now = 1
-                params['been3hr'] = 1
+                params['been3hr'] = best_error
     if not params['been4hr']:
         # only check 4 hr progress once
         if current_time - start > 4 * 60 * 60:
@@ -165,7 +165,7 @@ def check_progress(start, best_error, params):
             else:
                 print("been 4 hours, err = %.15f < %.15f" % (best_error, params['min_4hr']))
                 save_now = 1
-                params['been4hr'] = 1
+                params['been4hr'] = best_error
 
     if not params['beenHalf']:
         # only check halfway progress once
@@ -177,7 +177,7 @@ def check_progress(start, best_error, params):
                 return finished, save_now
             else:
                 print("Halfway through time, err = %.15f < %.15f" % (best_error, params['min_halfway']))
-                params['beenHalf'] = 1
+                params['beenHalf'] = best_error
 
     if current_time - start > params['max_time']:
         params['stop_condition'] = 'past max time'
