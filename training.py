@@ -8,7 +8,7 @@ import helperfns
 import networkarch as net
 
 
-def define_loss(x, y, g_list, g_list_omega, params):
+def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
     """Define the (unregularized) loss functions for the training."""
     # Minimize the mean squared errors.
     # subtraction and squaring element-wise, then average over both dimensions
@@ -44,7 +44,8 @@ def define_loss(x, y, g_list, g_list_omega, params):
     count_shifts_middle = 0
     if params['num_shifts_middle'] > 0:
         # generalization of: next_step = tf.matmul(g_list[0], L_pow)
-        next_step = net.varying_multiply(g_list[0], g_list_omega[0], params['delta_t'], params['num_real'],
+        omegas = net.omega_net_apply(phase, keep_prob, params, g_list[0], weights, biases)
+        next_step = net.varying_multiply(g_list[0], omegas, params['delta_t'], params['num_real'],
                                          params['num_complex_pairs'])
         # multiply g_list[0] by L (j+1) times
         for j in np.arange(max(params['shifts_middle'])):
@@ -59,8 +60,10 @@ def define_loss(x, y, g_list, g_list_omega, params):
                     loss3_denominator)
                 count_shifts_middle += 1
             # hopefully still on correct traj, so same omegas as before
-            next_step = net.varying_multiply(next_step, g_list_omega[j + 1], params['delta_t'], params['num_real'],
+            omegas = net.omega_net_apply(phase, keep_prob, params, next_step, weights, biases)
+            next_step = net.varying_multiply(next_step, omegas, params['delta_t'], params['num_real'],
                                              params['num_complex_pairs'])
+
         loss3 = loss3 / params['num_shifts_middle']
 
     # inf norm on autoencoder error
@@ -100,13 +103,13 @@ def try_net(data_val, params):
     # SET UP NETWORK
     phase = tf.placeholder(tf.bool, name='phase')
     keep_prob = tf.placeholder(tf.float64, shape=[], name='keep_prob')
-    x, y, g_list, weights, biases, g_list_omega = net.create_koopman_net(phase, keep_prob, params)
+    x, y, g_list, weights, biases = net.create_koopman_net(phase, keep_prob, params)
 
     max_shifts_to_stack = helperfns.num_shifts_in_stack(params)
 
     # DEFINE LOSS FUNCTION
     trainable_var = tf.trainable_variables()
-    loss1, loss2, loss3, loss_Linf, loss = define_loss(x, y, g_list, g_list_omega, params)
+    loss1, loss2, loss3, loss_Linf, loss = define_loss(x, y, g_list, weights, biases, params, phase, keep_prob)
     loss_L1, loss_L2, regularized_loss = define_regularization(params, trainable_var, loss)
 
     # CHOOSE OPTIMIZATION ALGORITHM

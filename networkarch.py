@@ -65,7 +65,10 @@ def encoder_apply(x, weights, biases, act_type, batch_flag, phase, out_flag, shi
             shift = 0
         else:
             shift = shifts_middle[j - 1]
-        x_shift = tf.squeeze(x[shift, :, :])
+        if isinstance(x, (list,)):
+            x_shift = x[shift]
+        else:
+            x_shift = tf.squeeze(x[shift, :, :])
         y.append(
             encoder_apply_one_shift(x_shift, weights, biases, act_type, batch_flag, phase, out_flag, keep_prob, name,
                                     num_encoder_weights))
@@ -173,16 +176,65 @@ def varying_multiply(y, omegas, delta_t, num_real, num_complex_pairs):
         return real_part
 
 
-def create_omega_net(phase, keep_prob, params, x):
-    """Create a network that learns parameters for L."""
-    weights, biases = decoder(params['widths_omega'], dist_weights=params['dist_weights_omega'],
-                              dist_biases=params['dist_biases_omega'], scale=params['scale_omega'], name='O',
-                              first_guess=params['first_guess_omega'])
-    g_list = encoder_apply(x, weights, biases, params['act_type'], params['batch_flag'], phase, out_flag=0,
-                           shifts_middle=params['shifts_middle'], keep_prob=keep_prob, name='O',
-                           num_encoder_weights=len(weights))
+def create_omega_net(phase, keep_prob, params, ycoords):
+    # ycoords is [None, 2] or [None, 3], etc. (temp. only handle 2-diml or 3-diml case)
 
-    return g_list, weights, biases
+    weights = dict()
+    biases = dict()
+
+    for j in np.arange(params['num_complex_pairs']):
+        temp_name = 'OC%d_' % (j + 1)
+        create_one_omega_net(params, temp_name, weights, biases, params['widths_omega_complex'])
+
+    for j in np.arange(params['num_real']):
+        temp_name = 'OR%d_' % (j + 1)
+        create_one_omega_net(params, temp_name, weights, biases, params['widths_omega_real'])
+
+    params['num_omega_weights'] = len(params['widths_omega_real']) - 1
+
+    omegas = omega_net_apply(phase, keep_prob, params, ycoords, weights, biases)
+
+    return omegas, weights, biases
+
+
+def create_one_omega_net(params, temp_name, weights, biases, widths):
+    weightsO, biasesO = decoder(widths, dist_weights=params['dist_weights_omega'],
+                                dist_biases=params['dist_biases_omega'], scale=params['scale_omega'], name=temp_name,
+                                first_guess=params['first_guess_omega'])
+    weights.update(weightsO)
+    biases.update(biasesO)
+
+
+def omega_net_apply(phase, keep_prob, params, ycoords, weights, biases):
+    omegas = []
+    for j in np.arange(params['num_complex_pairs']):
+        temp_name = 'OC%d_' % (j + 1)
+        ind = 2 * j
+        omegas.append(
+            omega_net_apply_one(phase, keep_prob, params, ycoords[:, ind:ind + 2], weights, biases, temp_name))
+    for j in np.arange(params['num_real']):
+        temp_name = 'OR%d_' % (j + 1)
+        ind = 2 * params['num_complex_pairs'] + j
+        omegas.append(omega_net_apply_one(phase, keep_prob, params, ycoords[:, ind], weights, biases, temp_name))
+
+    return omegas
+
+
+def omega_net_apply_one(phase, keep_prob, params, ycoords, weights, biases, name):
+    if len(ycoords.shape) == 1:
+        ycoords = ycoords[:, np.newaxis]
+
+    if ycoords.shape[1] == 2:
+        # complex conjugate pair
+        input = tf.reduce_sum(tf.square(ycoords), axis=1, keep_dims=True)
+
+    else:
+        input = ycoords
+
+    omegas = encoder_apply_one_shift(input, weights, biases, params['act_type'], params['batch_flag'], phase,
+                                     out_flag=0, keep_prob=keep_prob, name=name,
+                                     num_encoder_weights=params['num_omega_weights'])
+    return omegas
 
 
 def create_koopman_net(phase, keep_prob, params):
@@ -201,8 +253,8 @@ def create_koopman_net(phase, keep_prob, params):
                            num_encoder_weights=params['num_encoder_weights'])
 
     # g_list_omega is list of omegas, one entry for each middle_shift of x (like g_list)
-    g_list_omega, weights_omega, biases_omega = create_omega_net(phase, keep_prob, params, x)
-    params['num_omega_weights'] = len(weights_omega)
+    omegas, weights_omega, biases_omega = create_omega_net(phase, keep_prob, params, g_list[0])
+    # params['num_omega_weights'] = len(weights_omega) already done inside create_omega_net
     weights.update(weights_omega)
     biases.update(biases_omega)
 
@@ -222,7 +274,7 @@ def create_koopman_net(phase, keep_prob, params):
                            params['num_decoder_weights']))
 
     # g_list_omega[0] is for x[0,:,:], pairs with g_list[0]=encoded_layer
-    advanced_layer = varying_multiply(encoded_layer, g_list_omega[0], params['delta_t'], params['num_real'],
+    advanced_layer = varying_multiply(encoded_layer, omegas, params['delta_t'], params['num_real'],
                                       params['num_complex_pairs'])
 
     for j in np.arange(max(params['shifts'])):
@@ -231,7 +283,8 @@ def create_koopman_net(phase, keep_prob, params):
             y.append(decoder_apply(advanced_layer, weights, biases, params['act_type'], params['batch_flag'], phase,
                                    keep_prob, params['num_decoder_weights']))
 
-        advanced_layer = varying_multiply(advanced_layer, g_list_omega[j + 1], params['delta_t'], params['num_real'],
+        omegas = omega_net_apply(phase, keep_prob, params, advanced_layer, weights, biases)
+        advanced_layer = varying_multiply(advanced_layer, omegas, params['delta_t'], params['num_real'],
                                           params['num_complex_pairs'])
 
     if len(y) != (len(params['shifts']) + 1):
