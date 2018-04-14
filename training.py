@@ -119,7 +119,7 @@ def try_net(data_val, params):
 
     csv_path = params['model_path'].replace('model', 'error')
     csv_path = csv_path.replace('ckpt', 'csv')
-    print csv_path
+    print(csv_path)
 
     num_saved_per_file_pass = params['num_steps_per_file_pass'] / 20 + 1
     num_saved = np.floor(num_saved_per_file_pass * params['data_train_len'] * params['num_passes_per_file']).astype(int)
@@ -135,7 +135,7 @@ def try_net(data_val, params):
 
     # TRAINING
     # loop over training data files
-    for f in xrange(params['data_train_len'] * params['num_passes_per_file']):
+    for f in range(params['data_train_len'] * params['num_passes_per_file']):
         if finished:
             break
         file_num = (f % params['data_train_len']) + 1  # 1...data_train_len
@@ -152,7 +152,7 @@ def try_net(data_val, params):
         data_train_tensor = data_train_tensor[:, ind, :]
 
         # loop over batches in this file
-        for step in xrange(params['num_steps_per_batch'] * num_batches):
+        for step in range(params['num_steps_per_batch'] * num_batches):
 
             if params['batch_size'] < data_train_tensor.shape[1]:
                 offset = (step * params['batch_size']) % (num_examples - params['batch_size'])

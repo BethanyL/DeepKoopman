@@ -14,7 +14,7 @@ def stack_data(data, num_shifts, len_time):
     else:
         data = (np.asmatrix(data)).getT()
         n = 1
-    num_traj = data.shape[0] / len_time
+    num_traj = int(data.shape[0] / len_time)
 
     new_len_time = len_time - num_shifts
 
@@ -199,8 +199,8 @@ def save_files(sess, csv_path, train_val_error, params, weights, biases):
     params['minTest'] = np.min(train_val_error[:, 1])
     params['minRegTrain'] = np.min(train_val_error[:, 2])
     params['minRegTest'] = np.min(train_val_error[:, 3])
-    print "min train: %.12f, min val: %.12f, min reg. train: %.12f, min reg. val: %.12f" % (
-        params['minTrain'], params['minTest'], params['minRegTrain'], params['minRegTest'])
+    print("min train: %.12f, min val: %.12f, min reg. train: %.12f, min reg. val: %.12f" % (
+        params['minTrain'], params['minTest'], params['minRegTrain'], params['minRegTest']))
     save_params(params)
 
 
@@ -248,8 +248,8 @@ def set_defaults(params):
 
     params['d'] = len(params['widths'])  # d must be calculated like this
     params['do'] = len(params['widths_omega'])  # do must be calculated like this
-    print params['widths']
-    print params['widths_omega']
+    print(params['widths'])
+    print(params['widths_omega'])
 
     # defaults related to initialization of parameters
     if 'dist_weights' not in params:
@@ -279,11 +279,11 @@ def set_defaults(params):
         print("setting default: scale for weights in omega net is 0.1 (applies to tn distribution)")
         params['scale_omega'] = 0.1
 
-    if isinstance(params['dist_weights'], basestring):
+    if isinstance(params['dist_weights'], str):
         params['dist_weights'] = [params['dist_weights']] * (len(params['widths']) - 1)
     if isinstance(params['dist_biases'], int):
         params['dist_biases'] = [params['dist_biases']] * (len(params['widths']) - 1)
-    if isinstance(params['dist_weights_omega'], basestring):
+    if isinstance(params['dist_weights_omega'], str):
         params['dist_weights_omega'] = [params['dist_weights_omega']] * (len(params['widths_omega']) - 1)
     if isinstance(params['dist_biases_omega'], int):
         params['dist_biases_omega'] = [params['dist_biases_omega']] * (len(params['widths_omega']) - 1)

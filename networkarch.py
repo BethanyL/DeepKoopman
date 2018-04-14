@@ -179,7 +179,7 @@ def create_omega_net(phase, keep_prob, params, x):
 
 def create_koopman_net(phase, keep_prob, params):
     """Create a Koopman network that encodes, advances in time, and decodes."""
-    depth = (params['d'] - 4) / 2
+    depth = int((params['d'] - 4) / 2)
 
     max_shifts_to_stack = helperfns.num_shifts_in_stack(params)
 
@@ -225,7 +225,7 @@ def create_koopman_net(phase, keep_prob, params):
         advanced_layer = varying_multiply(advanced_layer, g_list_omega[j + 1], params['delta_t'])
 
     if len(y) != (len(params['shifts']) + 1):
-        print "messed up looping over shifts! %r" % params['shifts']
+        print("messed up looping over shifts! %r" % params['shifts'])
         raise ValueError(
             'length(y) not proper length: check create_koopman_net code and how defined params[shifts] in experiment')
 
