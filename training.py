@@ -142,7 +142,8 @@ def try_net(data_val, params):
 
         if (params['data_train_len'] > 1) or (f == 0):
             # don't keep reloading data if always same
-            data_train = np.loadtxt(('./data/%s_train%d_x.csv' % (params['data_name'], file_num)), delimiter=',')
+            data_train = np.loadtxt(('./data/%s_train%d_x.csv' % (params['data_name'], file_num)), delimiter=',',
+                                    dtype=np.float64)
             data_train_tensor = helperfns.stack_data(data_train, max_shifts_to_stack, params['len_time'])
             num_examples = data_train_tensor.shape[1]
             num_batches = int(np.floor(num_examples / params['batch_size']))
@@ -222,7 +223,7 @@ def main_exp(params):
         os.makedirs(params['folder_name'])
 
     # data is num_steps x num_examples x n but load flattened version (matrix instead of tensor)
-    data_val = np.genfromtxt(('./data/%s_val_x.csv' % (params['data_name'])), delimiter=',')
+    data_val = np.loadtxt(('./data/%s_val_x.csv' % (params['data_name'])), delimiter=',', dtype=np.float64)
     try_net(data_val, params)
 
     tf.reset_default_graph()
