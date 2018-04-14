@@ -34,7 +34,7 @@ def bias_variable(shape, var_name, distribution=''):
     if distribution:
         initial = np.genfromtxt(distribution, delimiter=',', dtype=np.float64)
     else:
-        initial = tf.constant(0.1, shape=shape, dtype=tf.float64)
+        initial = tf.constant(0.0, shape=shape, dtype=tf.float64)
     return tf.Variable(initial, name=var_name)
 
 
