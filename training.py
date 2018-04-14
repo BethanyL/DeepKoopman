@@ -80,7 +80,7 @@ def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
     return loss1, loss2, loss3, loss_Linf, loss
 
 
-def define_regularization(params, trainable_var, loss):
+def define_regularization(params, trainable_var, loss, loss1):
     """Define the regularization and add to loss."""
     if params['L1_lam']:
         l1_regularizer = tf.contrib.layers.l1_regularizer(scale=params['L1_lam'], scope=None)
@@ -94,8 +94,9 @@ def define_regularization(params, trainable_var, loss):
     loss_L2 = params['L2_lam'] * l2_regularizer
 
     regularized_loss = loss + loss_L1 + loss_L2
+    regularized_loss1 = loss1 + loss_L1 + loss_L2
 
-    return loss_L1, loss_L2, regularized_loss
+    return loss_L1, loss_L2, regularized_loss, regularized_loss1
 
 
 def try_net(data_val, params):
@@ -110,10 +111,11 @@ def try_net(data_val, params):
     # DEFINE LOSS FUNCTION
     trainable_var = tf.trainable_variables()
     loss1, loss2, loss3, loss_Linf, loss = define_loss(x, y, g_list, weights, biases, params, phase, keep_prob)
-    loss_L1, loss_L2, regularized_loss = define_regularization(params, trainable_var, loss)
+    loss_L1, loss_L2, regularized_loss, regularized_loss1 = define_regularization(params, trainable_var, loss, loss1)
 
     # CHOOSE OPTIMIZATION ALGORITHM
     optimizer = helperfns.choose_optimizer(params, regularized_loss, trainable_var)
+    optimizer_autoencoder = helperfns.choose_optimizer(params, regularized_loss1, trainable_var)
 
     # LAUNCH GRAPH AND INITIALIZE
     sess = tf.Session()
@@ -171,7 +173,10 @@ def try_net(data_val, params):
             feed_dict_train_loss = {x: batch_data_train, phase: 1, keep_prob: 1.0}
             feed_dict_val = {x: data_val_tensor, phase: 0, keep_prob: 1.0}
 
-            sess.run(optimizer, feed_dict=feed_dict_train)
+            if (not params['been5min']) and params['auto_first']:
+                sess.run(optimizer_autoencoder, feed_dict=feed_dict_train)
+            else:
+                sess.run(optimizer, feed_dict=feed_dict_train)
 
             if step % 20 == 0:
                 train_error = sess.run(loss, feed_dict=feed_dict_train_loss)

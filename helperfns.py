@@ -293,6 +293,8 @@ def set_defaults(params):
         params['dist_biases_omega'] = [params['dist_biases_omega']] * (len(params['widths_omega']) - 1)
 
     # defaults related to loss function
+    if 'auto_first' not in params:
+        params['auto_first'] = 0
     if 'relative_loss' not in params:
         print("setting default: loss is not relative")
         params['relative_loss'] = 0
