@@ -237,14 +237,21 @@ def set_defaults(params):
     # defaults related to network architecture
     if 'widths' not in params:
         raise KeyError("Error, must give widths as input to main")
-    if 'widths_omega' not in params:
-        raise KeyError("Error, must give widths for omega net")
+    print(params['widths'])
+    if 'hidden_widths_omega' not in params:
+        raise KeyError("Error, must give hidden_widths for omega net")
+    params['widths_omega_complex'] = [1, ] + params['hidden_widths_omega'] + [2, ]
+    params['widths_omega_real'] = [1, ] + params['hidden_widths_omega'] + [1, ]
+    print(params['widths_omega_complex'])
+    print(params['widths_omega_real'])
+
     if 'act_type' not in params:
         print("setting default: activation function is ReLU")
         params['act_type'] = 'relu'
     if 'batch_flag' not in params:
         print("setting default: no batch normalization")
         params['batch_flag'] = 0
+
     if 'num_evals' not in params:
         raise KeyError("Error, must give number of evals: num_evals")
     if 'num_real' not in params:
@@ -256,8 +263,7 @@ def set_defaults(params):
 
     params['d'] = len(params['widths'])  # d must be calculated like this
     params['do'] = len(params['widths_omega'])  # do must be calculated like this
-    print(params['widths'])
-    print(params['widths_omega'])
+
 
     # defaults related to initialization of parameters
     if 'dist_weights' not in params:
@@ -292,10 +298,9 @@ def set_defaults(params):
     if isinstance(params['dist_biases'], int):
         params['dist_biases'] = [params['dist_biases']] * (len(params['widths']) - 1)
     if isinstance(params['dist_weights_omega'], str):
-        params['dist_weights_omega'] = [params['dist_weights_omega']] * (len(params['widths_omega']) - 1)
+        params['dist_weights_omega'] = [params['dist_weights_omega']] * (len(params['widths_omega_real']) - 1)
     if isinstance(params['dist_biases_omega'], int):
-        params['dist_biases_omega'] = [params['dist_biases_omega']] * (len(params['widths_omega']) - 1)
-
+        params['dist_biases_omega'] = [params['dist_biases_omega']] * (len(params['widths_omega_real']) - 1)
     # defaults related to loss function
     if 'auto_first' not in params:
         params['auto_first'] = 0
