@@ -271,10 +271,10 @@ def set_defaults(params):
         print("setting default: distribution for weights on auxiliary net is tn (truncated normal)")
         params['dist_weights_omega'] = 'tn'
     if 'dist_biases' not in params:
-        print("setting default: initialize biases for main net to 0.1")
+        print("setting default: biases in main net will be init. to default number")
         params['dist_biases'] = 0
     if 'dist_biases_omega' not in params:
-        print("setting default: initialize biases for omega net to 0.1")
+        print("setting default: biases in auxiliary net will be init. to default number")
         params['dist_biases_omega'] = 0
 
     if 'first_guess' not in params:
@@ -299,6 +299,7 @@ def set_defaults(params):
         params['dist_weights_omega'] = [params['dist_weights_omega']] * (len(params['widths_omega_real']) - 1)
     if isinstance(params['dist_biases_omega'], int):
         params['dist_biases_omega'] = [params['dist_biases_omega']] * (len(params['widths_omega_real']) - 1)
+
     # defaults related to loss function
     if 'auto_first' not in params:
         params['auto_first'] = 0
