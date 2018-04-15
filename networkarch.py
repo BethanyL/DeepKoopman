@@ -16,6 +16,11 @@ def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0
         # divide by sqrt of m, where m is number of inputs
         scale = 1.0 / np.sqrt(shape[0])
         initial = tf.random_uniform(shape, minval=-scale, maxval=scale, dtype=tf.float64)
+    elif distribution == 'he':
+        # from He, et al. ICCV 2015 (referenced in Andrew Ng's class)
+        # divide by m, where m is number of inputs
+        scale = np.sqrt(2.0 / shape[0])
+        initial = tf.random_normal(shape, mean=0, stddev=scale, dtype=tf.float64)
     elif distribution == 'glorot_bengio':
         # see page 295 of Goodfellow et al's DL book
         scale = np.sqrt(6.0 / (shape[0] + shape[1]))
