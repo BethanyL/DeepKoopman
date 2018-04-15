@@ -263,14 +263,13 @@ def set_defaults(params):
 
     params['d'] = len(params['widths'])  # d must be calculated like this
 
-
     # defaults related to initialization of parameters
     if 'dist_weights' not in params:
-        print("setting default: distribution for weights on main net is dl")
-        params['dist_weights'] = 'dl'
+        print("setting default: distribution for weights on main net is tn (truncated normal)")
+        params['dist_weights'] = 'tn'
     if 'dist_weights_omega' not in params:
-        print("setting default: distribution for weights on omega net is dl")
-        params['dist_weights_omega'] = 'dl'
+        print("setting default: distribution for weights on auxiliary net is tn (truncated normal)")
+        params['dist_weights_omega'] = 'tn'
     if 'dist_biases' not in params:
         print("setting default: initialize biases for main net to 0.1")
         params['dist_biases'] = 0
