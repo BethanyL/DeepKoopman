@@ -67,8 +67,13 @@ def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
         loss3 = loss3 / params['num_shifts_middle']
 
     # inf norm on autoencoder error
-    Linf1_den = tf.norm(tf.norm(tf.squeeze(x[0, :, :]), axis=1, ord=np.inf), ord=np.inf) + denominator_nonzero
-    Linf2_den = tf.norm(tf.norm(tf.squeeze(x[1, :, :]), axis=1, ord=np.inf), ord=np.inf) + denominator_nonzero
+    if params['relative_loss']:
+        Linf1_den = tf.norm(tf.norm(tf.squeeze(x[0, :, :]), axis=1, ord=np.inf), ord=np.inf) + denominator_nonzero
+        Linf2_den = tf.norm(tf.norm(tf.squeeze(x[1, :, :]), axis=1, ord=np.inf), ord=np.inf) + denominator_nonzero
+    else:
+        Linf1_den = tf.to_double(1.0)
+        Linf2_den = tf.to_double(1.0)
+
     Linf1_penalty = tf.truediv(
         tf.norm(tf.norm(y[0] - tf.squeeze(x[0, :, :]), axis=1, ord=np.inf), ord=np.inf), Linf1_den)
     Linf2_penalty = tf.truediv(
