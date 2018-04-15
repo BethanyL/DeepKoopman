@@ -208,6 +208,10 @@ def try_net(data_val, params):
                 train_val_error[count, 9] = sess.run(loss3, feed_dict=feed_dict_val)
                 train_val_error[count, 10] = sess.run(loss_Linf, feed_dict=feed_dict_train_loss)
                 train_val_error[count, 11] = sess.run(loss_Linf, feed_dict=feed_dict_val)
+                if np.isnan(train_val_error[count, 10]):
+                    params['stop_condition'] = 'loss_Linf is nan'
+                    finished = 1
+                    break
                 train_val_error[count, 12] = sess.run(loss_L1, feed_dict=feed_dict_train_loss)
                 train_val_error[count, 13] = sess.run(loss_L1, feed_dict=feed_dict_val)
                 train_val_error[count, 14] = sess.run(loss_L2, feed_dict=feed_dict_train_loss)
