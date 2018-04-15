@@ -21,6 +21,7 @@ def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
         loss1_denominator = tf.reduce_mean(tf.reduce_mean(tf.square(tf.squeeze(x[0, :, :])), 1)) + denominator_nonzero
     else:
         loss1_denominator = tf.to_double(1.0)
+
     mean_squared_error = tf.reduce_mean(tf.reduce_mean(tf.square(y[0] - tf.squeeze(x[0, :, :])), 1))
     loss1 = params['recon_lam'] * tf.truediv(mean_squared_error, loss1_denominator)
 
@@ -59,7 +60,6 @@ def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
                     tf.reduce_mean(tf.reduce_mean(tf.square(next_step - g_list[count_shifts_middle + 1]), 1)),
                     loss3_denominator)
                 count_shifts_middle += 1
-            # hopefully still on correct traj, so same omegas as before
             omegas = net.omega_net_apply(phase, keep_prob, params, next_step, weights, biases)
             next_step = net.varying_multiply(next_step, omegas, params['delta_t'], params['num_real'],
                                              params['num_complex_pairs'])
@@ -126,6 +126,7 @@ def try_net(data_val, params):
     sess = tf.Session()
     saver = tf.train.Saver()
 
+    # Before starting, initialize the variables.  We will 'run' this first.
     init = tf.global_variables_initializer()
     sess.run(init)
 
@@ -240,5 +241,4 @@ def main_exp(params):
     # data is num_steps x num_examples x n but load flattened version (matrix instead of tensor)
     data_val = np.loadtxt(('./data/%s_val_x.csv' % (params['data_name'])), delimiter=',', dtype=np.float64)
     try_net(data_val, params)
-
     tf.reset_default_graph()

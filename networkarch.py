@@ -248,7 +248,7 @@ def create_koopman_net(phase, keep_prob, params):
 
     max_shifts_to_stack = helperfns.num_shifts_in_stack(params)
 
-    encoder_widths = params['widths'][0:depth + 2]  # n ... nl
+    encoder_widths = params['widths'][0:depth + 2]  # n ... k
     x, weights, biases = encoder(encoder_widths, dist_weights=params['dist_weights'][0:depth + 1],
                                  dist_biases=params['dist_biases'][0:depth + 1], scale=params['scale'],
                                  num_shifts_max=max_shifts_to_stack, first_guess=params['first_guess'])
@@ -264,7 +264,7 @@ def create_koopman_net(phase, keep_prob, params):
     biases.update(biases_omega)
 
     num_widths = len(params['widths'])
-    decoder_widths = params['widths'][depth + 2:num_widths]  # nl ... n
+    decoder_widths = params['widths'][depth + 2:num_widths]  # k ... n
     weights_decoder, biases_decoder = decoder(decoder_widths, dist_weights=params['dist_weights'][depth + 2:],
                                               dist_biases=params['dist_biases'][depth + 2:],
                                               scale=params['scale'])
@@ -297,4 +297,4 @@ def create_koopman_net(phase, keep_prob, params):
         raise ValueError(
             'length(y) not proper length: check create_koopman_net code and how defined params[shifts] in experiment')
 
-    return x, y, g_list, weights, biases, g_list_omega
+    return x, y, g_list, weights, biases

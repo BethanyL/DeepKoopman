@@ -277,7 +277,7 @@ def set_defaults(params):
         print("setting default: no first guess for main network")
         params['first_guess'] = 0
     if 'first_guess_omega' not in params:
-        print("setting default: no first guess for omega net")
+        print("setting default: no first guess for auxiliary net")
         params['first_guess_omega'] = 0
 
     if 'scale' not in params:
@@ -392,7 +392,6 @@ def set_defaults(params):
     params['been3hr'] = 0
     params['been4hr'] = 0
     params['beenHalf'] = 0
-
 
 def num_shifts_in_stack(params):
     """Calculate how many time points (shifts) will be used in loss functions."""
