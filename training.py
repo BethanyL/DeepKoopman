@@ -191,7 +191,10 @@ def try_net(data_val, params):
                 if val_error < (best_error - best_error * (10 ** (-5))):
                     best_error = val_error.copy()
                     saver.save(sess, params['model_path'])
-                    print("New best val error %f" % best_error)
+                    reg_train_err = sess.run(regularized_loss, feed_dict=feed_dict_train_loss)
+                    reg_val_err = sess.run(regularized_loss, feed_dict=feed_dict_val)
+                    print("New best val error %f (with reg. train err %f and reg. val err %f)" % (
+                        best_error, reg_train_err, reg_val_err))
 
                 train_val_error[count, 0] = train_error
                 train_val_error[count, 1] = val_error
