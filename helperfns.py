@@ -262,7 +262,6 @@ def set_defaults(params):
         raise ValueError("Error, num_evals must equal 2*num_compex_pairs + num_real")
 
     params['d'] = len(params['widths'])  # d must be calculated like this
-    params['do'] = len(params['widths_omega'])  # do must be calculated like this
 
 
     # defaults related to initialization of parameters
