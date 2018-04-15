@@ -397,6 +397,7 @@ def set_defaults(params):
     params['been4hr'] = 0
     params['beenHalf'] = 0
 
+
 def num_shifts_in_stack(params):
     """Calculate how many time points (shifts) will be used in loss functions."""
     max_shifts_to_stack = 1
