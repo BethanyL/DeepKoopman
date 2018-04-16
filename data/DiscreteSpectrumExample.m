@@ -18,7 +18,7 @@ X_val = DiscreteSpectrumExampleFn(x1range, x2range, round(.2*numICs), tSpan, mu,
 filename_val = strcat(filenamePrefix, '_val_x.csv');
 dlmwrite(filename_val, X_val, 'precision', '%.14f')
 
-for j = 1:10
+for j = 1:3
 	seed = 2+j;
 	X_train = DiscreteSpectrumExampleFn(x1range, x2range, round(.7*numICs), tSpan, mu, lambda, seed);
 	filename_train = strcat(filenamePrefix, sprintf('_train%d_x.csv',j));

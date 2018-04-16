@@ -18,7 +18,7 @@ X_val = FluidFlowBoxFn(x1range, x2range, x3range, numTest_ICs, tSpan, seed, max_
 filename_val = strcat(filenamePrefix, '_val_x.csv');
 dlmwrite(filename_val, X_val, 'precision', '%.14f')
 
-for j = 1:20
+for j = 1:4
 	seed = 2+j;
 	X_train = FluidFlowBoxFn(x1range, x2range, x3range, numTest_ICs, tSpan, seed, max_x3);
 	filename_train = strcat(filenamePrefix, sprintf('_train%d_x.csv', j));

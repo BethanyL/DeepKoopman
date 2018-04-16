@@ -17,7 +17,7 @@ X_val = FluidFlowOnAttractorFn(Rrange, Trange, numTest_ICs, tSpan, seed);
 filename_val = strcat(filenamePrefix, '_val_x.csv');
 dlmwrite(filename_val, X_val, 'precision', '%.14f')
 
-for j = 1:20
+for j = 1:3
 	seed = 2+j;
 	X_train = FluidFlowOnAttractorFn(Rrange, Trange, numTest_ICs, tSpan, seed);
 	filename_train = strcat(filenamePrefix, sprintf('_train%d_x.csv', j));
