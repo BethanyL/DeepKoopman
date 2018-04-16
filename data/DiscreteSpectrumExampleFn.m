@@ -1,6 +1,7 @@
 function X = DiscreteSpectrumExampleFn(x1range, x2range, numICs, tSpan, mu, lambda, seed)
 
 % Koopman example from 3.4.2 (pg 51) of the DMD book
+% (Dynamic Mode Decomposition by Kutz, Brunton, Brunton, and Proctor)
 % nonlinear dynamical system in two variables, but with 3D Koopman
 % observables, have linear dynamical system
 
@@ -18,6 +19,8 @@ lenT = length(tSpan);
 X = zeros(numICs*lenT, 2);
 
 count = 1;
+% in order to solve more accurately than ode45, map into 3D linear system
+% and use exact analytic solution 
 for j = 1:numICs
     Y0 = [x1(j); x2(j); x1(j)^2];
     c1 = Y0(1);

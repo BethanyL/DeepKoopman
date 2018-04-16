@@ -1,5 +1,5 @@
 
-numICs = 200*200*21/20;
+numICs = 5000;
 filenamePrefix = 'DiscreteSpectrumExample';
 
 x1range = [-.5, .5];

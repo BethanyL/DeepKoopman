@@ -1,4 +1,4 @@
-function X = PendulumFnPotential(x1range, x2range, numICs, tSpan, seed, max_potential)
+function X = PendulumFn(x1range, x2range, numICs, tSpan, seed, max_potential)
 
 
 % try some initial conditions for x1, x2
@@ -27,15 +27,15 @@ for j = 1:100*numICs
         [T, temp] = ode45(dynsys, tSpan, ic);
 
         X(1+(count-1)*lenT : lenT + (count-1)*lenT,:) = temp;
-	if count == numICs
-	    break
-	end
+        if count == numICs
+            break
+        end
         count = count + 1;
     end
 end
 
 if count < numICs
-	sprintf('oops, potential energy too small for IC box')
+    sprintf('oops, potential energy too small for IC box')
 end
 
 
