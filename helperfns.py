@@ -7,7 +7,13 @@ import tensorflow as tf
 
 
 def stack_data(data, num_shifts, len_time):
-    """Stack data from a matrix into a tensor."""
+    """Stack data from a 2D array into a 3D array.
+
+    Arguments:
+        data -- data matrix to be reshaped
+        num_shifts -- number of shifts (time steps) that losses will use (maximum is len_time - 1)
+        len_time -- number of time steps in each trajectory in data
+    """
     nd = data.ndim
     if nd > 1:
         n = data.shape[1]
@@ -29,7 +35,13 @@ def stack_data(data, num_shifts, len_time):
 
 
 def choose_optimizer(params, regularized_loss, trainable_var):
-    """Choose which optimizer to use for the network training."""
+    """Choose which optimizer to use for the network training.
+
+    Arguments:
+        params -- dictionary of parameters for experiment
+        regularized_loss -- loss, including regularization
+        trainable_var -- list of trainable TensorFlow variables
+    """
     if params['opt_alg'] == 'adam':
         optimizer = tf.train.AdamOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
     elif params['opt_alg'] == 'adadelta':
@@ -79,7 +91,13 @@ def choose_optimizer(params, regularized_loss, trainable_var):
 
 
 def check_progress(start, best_error, params):
-    """Check on the progress of the network training and decide if it's time to stop."""
+    """Check on the progress of the network training and decide if it's time to stop.
+
+    Arguments:
+        start -- time that experiment started
+        best_error -- best error so far in training
+        params -- dictionary of parameters for experiment
+    """
     finished = 0
     save_now = 0
 
@@ -188,7 +206,16 @@ def check_progress(start, best_error, params):
 
 
 def save_files(sess, csv_path, train_val_error, params, weights, biases):
-    """Save error files, weights, biases, and parameters"""
+    """Save error files, weights, biases, and parameters.
+
+    Arguments:
+        sess -- TensorFlow session
+        csv_path -- string for path to save error file as csv
+        train_val_error -- table of training and validation errors
+        params -- dictionary of parameters for experiment
+        weights -- dictionary of weights for all networks
+        biases -- dictionary of biases for all networks
+    """
     np.savetxt(csv_path, train_val_error, delimiter=',')
 
     for key, value in weights.items():
@@ -205,13 +232,21 @@ def save_files(sess, csv_path, train_val_error, params, weights, biases):
 
 
 def save_params(params):
-    """Save parameter dictionary to file."""
+    """Save parameter dictionary to file.
+
+    Arguments:
+        params -- dictionary of parameters for experiment
+    """
     with open(params['model_path'].replace('ckpt', 'pkl'), 'wb') as f:
         pickle.dump(params, f, pickle.HIGHEST_PROTOCOL)
 
 
 def set_defaults(params):
-    """Set defaults and make some checks in parameters dictionary."""
+    """Set defaults and make some checks in parameters dictionary.
+
+    Arguments:
+        params -- dictionary of parameters for experiment
+    """
     # defaults related to dataset
     if 'data_name' not in params:
         raise KeyError("Error: must give data_name as input to main")
@@ -399,7 +434,11 @@ def set_defaults(params):
 
 
 def num_shifts_in_stack(params):
-    """Calculate how many time points (shifts) will be used in loss functions."""
+    """Calculate how many time points (shifts) will be used in loss functions.
+
+    Arguments:
+        params -- dictionary of parameters for experiment
+    """
     max_shifts_to_stack = 1
     if params['num_shifts']:
         max_shifts_to_stack = max(max_shifts_to_stack, max(params['shifts']))

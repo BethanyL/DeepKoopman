@@ -9,7 +9,18 @@ import networkarch as net
 
 
 def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
-    """Define the (unregularized) loss functions for the training."""
+    """Define the (unregularized) loss functions for the training.
+
+    Arguments:
+        x -- placeholder for input
+        y -- list of outputs of network for each shift (each prediction step)
+        g_list -- list of output of encoder for each shift (encoding each step in x)
+        weights -- dictionary of weights for all networks
+        biases -- dictionary of biases for all networks
+        params -- dictionary of parameters for experiment
+        phase -- boolean placeholder for dropout: training phase or not training phase
+        keep_prob -- probability that weight is kept during dropout
+    """
     # Minimize the mean squared errors.
     # subtraction and squaring element-wise, then average over both dimensions
     # n columns
@@ -86,7 +97,14 @@ def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
 
 
 def define_regularization(params, trainable_var, loss, loss1):
-    """Define the regularization and add to loss."""
+    """Define the regularization and add to loss.
+
+    Arguments:
+        params -- dictionary of parameters for experiment
+        trainable_var -- list of trainable TensorFlow variables
+        loss -- the unregularized loss
+        loss1 -- the autoenocder component of the loss
+    """
     if params['L1_lam']:
         l1_regularizer = tf.contrib.layers.l1_regularizer(scale=params['L1_lam'], scope=None)
         # TODO: don't include biases? use weights dict instead?
@@ -105,7 +123,12 @@ def define_regularization(params, trainable_var, loss, loss1):
 
 
 def try_net(data_val, params):
-    """Run a random experiment for particular params and data."""
+    """Run a random experiment for particular params and data.
+
+    Arguments:
+        data_val -- array containing validation dataset
+        params -- dictionary of parameters for experiment
+    """
     # SET UP NETWORK
     phase = tf.placeholder(tf.bool, name='phase')
     keep_prob = tf.placeholder(tf.float64, shape=[], name='keep_prob')
@@ -239,7 +262,11 @@ def try_net(data_val, params):
 
 
 def main_exp(params):
-    """Set up and run one random experiment."""
+    """Set up and run one random experiment.
+
+    Arguments:
+        params -- dictionary of parameters for experiment
+    """
     helperfns.set_defaults(params)
 
     if not os.path.exists(params['folder_name']):

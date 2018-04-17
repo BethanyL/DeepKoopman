@@ -5,7 +5,15 @@ import helperfns
 
 
 def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0):
-    """Create a variable for a weight matrix."""
+    """Create a variable for a weight matrix.
+
+    Arguments:
+        shape -- array giving shape of output weight variable
+        var_name -- string naming weight variable
+        distribution -- string for which distribution to use for random initialization
+        scale -- (for tn distribution): standard deviation of normal distribution before truncation
+        first_guess -- (for tn distribution): array of first guess for weight matrix, added to tn dist.
+    """
     if distribution == 'tn':
         initial = tf.truncated_normal(shape, stddev=scale, dtype=tf.float64) + first_guess
     elif distribution == 'xavier':
@@ -35,7 +43,13 @@ def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0
 
 
 def bias_variable(shape, var_name, distribution=''):
-    """Create a variable for a bias vector."""
+    """Create a variable for a bias vector.
+
+    Arguments:
+        shape -- array giving shape of output bias variable
+        var_name -- string naming bias variable
+        distribution -- string for which distribution to use for random initialization (file name)
+    """
     if distribution:
         initial = np.genfromtxt(distribution, delimiter=',', dtype=np.float64)
     else:
@@ -44,7 +58,16 @@ def bias_variable(shape, var_name, distribution=''):
 
 
 def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_guess):
-    """Create an encoder network: an input placeholder x, dictionary of weights, and dictionary of biases."""
+    """Create an encoder network: an input placeholder x, dictionary of weights, and dictionary of biases.
+
+    Arguments:
+        widths -- array or list of widths for layers of network
+        dist_weights -- array or list of strings for distributions of weight matrices
+        dist_biases -- array or list of strings for distributions of bias vectors
+        scale -- (for tn distribution of weight matrices): standard deviation of normal distribution before truncation
+        num_shifts_max -- number of shifts (time steps) that losses will use (max of num_shifts and num_shifts_middle)
+        first_guess -- (for tn dist. of weight matrices): array of first guess for weight matrix, added to tn dist.
+    """
     x = tf.placeholder(tf.float64, [num_shifts_max + 1, None, widths[0]])
 
     weights = dict()
@@ -60,9 +83,22 @@ def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_gues
     return x, weights, biases
 
 
-def encoder_apply(x, weights, biases, act_type, batch_flag, phase, out_flag, shifts_middle, keep_prob, name='E',
+def encoder_apply(x, weights, biases, act_type, batch_flag, phase, shifts_middle, keep_prob, name='E',
                   num_encoder_weights=1):
-    """Apply an encoder to data x."""
+    """Apply an encoder to data x.
+
+    Arguments:
+        x -- placeholder for input
+        weights -- dictionary of weights
+        biases -- dictionary of biases
+        act_type -- string for activation type for nonlinear layers (i.e. sigmoid, relu, or elu)
+        batch_flag -- 0 if no batch_normalization, 1 if batch_normalization
+        phase -- boolean placeholder for dropout: training phase or not training phase
+        shifts_middle -- number of shifts (steps) in x to apply encoder to for linearity loss
+        keep_prob -- probability that weight is kept during dropout
+        name -- string for prefix on weight matrices, default 'E' for encoder
+        num_encoder_weights -- number of weight matrices (layers) in encoder network, default 1
+    """
     y = []
     num_shifts_middle = len(shifts_middle)
     for j in np.arange(num_shifts_middle + 1):
@@ -75,14 +111,26 @@ def encoder_apply(x, weights, biases, act_type, batch_flag, phase, out_flag, shi
         else:
             x_shift = tf.squeeze(x[shift, :, :])
         y.append(
-            encoder_apply_one_shift(x_shift, weights, biases, act_type, batch_flag, phase, out_flag, keep_prob, name,
+            encoder_apply_one_shift(x_shift, weights, biases, act_type, batch_flag, phase, keep_prob, name,
                                     num_encoder_weights))
     return y
 
 
-def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, phase, out_flag, keep_prob, name='E',
+def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, phase, keep_prob, name='E',
                             num_encoder_weights=1):
-    """Apply an encoder to data for only one time step (shift)."""
+    """Apply an encoder to data for only one time step (shift).
+
+    Arguments:
+        prev_layer -- input for a particular time step (shift)
+        weights -- dictionary of weights
+        biases -- dictionary of biases
+        act_type -- string for activation type for nonlinear layers (i.e. sigmoid, relu, or elu)
+        batch_flag -- 0 if no batch_normalization, 1 if batch_normalization
+        phase -- boolean placeholder for dropout: training phase or not training phase
+        keep_prob -- probability that weight is kept during dropout
+        name -- string for prefix on weight matrices, default 'E' (for "encoder")
+        num_encoder_weights -- number of weight matrices (layers) in encoder network, default 1
+    """
     for i in np.arange(num_encoder_weights - 1):
         h1 = tf.matmul(prev_layer, weights['W%s%d' % (name, i + 1)]) + biases['b%s%d' % (name, i + 1)]
         if batch_flag:
@@ -99,14 +147,23 @@ def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, p
     final = tf.matmul(prev_layer, weights['W%s%d' % (name, num_encoder_weights)]) + biases[
         'b%s%d' % (name, num_encoder_weights)]
 
-    if (not out_flag) and batch_flag:
+    if batch_flag:
         final = tf.contrib.layers.batch_norm(final, is_training=phase)
 
     return final
 
 
 def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
-    """Create a decoder network: a dictionary of weights and a dictionary of biases."""
+    """Create a decoder network: a dictionary of weights and a dictionary of biases.
+
+    Arguments:
+        widths -- array or list of widths for layers of network
+        dist_weights -- array or list of strings for distributions of weight matrices
+        dist_biases -- array or list of strings for distributions of bias vectors
+        scale -- (for tn distribution of weight matrices): standard deviation of normal distribution before truncation
+        name -- string for prefix on weight matrices, default 'D' (for "decoder")
+        first_guess -- (for tn dist. of weight matrices): array of first guess for weight matrix, added to tn dist.
+    """
     weights = dict()
     biases = dict()
     for i in np.arange(len(widths) - 1):
@@ -120,7 +177,18 @@ def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
 
 
 def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, phase, keep_prob, num_decoder_weights):
-    """Apply a decoder to data prev_layer"""
+    """Apply a decoder to data prev_layer
+
+    Arguments:
+        prev_layer -- input to decoder network
+        weights -- dictionary of weights
+        biases -- dictionary of biases
+        act_type -- string for activation type for nonlinear layers (i.e. sigmoid, relu, or elu)
+        batch_flag -- 0 if no batch_normalization, 1 if batch_normalization
+        phase -- boolean placeholder for dropout: training phase or not training phase
+        keep_prob -- probability that weight is kept during dropout
+        num_decoder_weights -- number of weight matrices (layers) in decoder network
+    """
     for i in np.arange(num_decoder_weights - 1):
         h1 = tf.matmul(prev_layer, weights['WD%d' % (i + 1)]) + biases['bD%d' % (i + 1)]
         if batch_flag:
@@ -138,7 +206,16 @@ def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, phase, keep
 
 
 def form_complex_conjugate_block(omegas, delta_t):
-    """Form a 2x2 block for a complex conj. pair of eigenvalues, but for each example: dimension [None, 2, 2]"""
+    """Form a 2x2 block for a complex conj. pair of eigenvalues, but for each example, so dimension [None, 2, 2]
+
+    2x2 Block is
+    exp(mu * delta_t) * [cos(omega * delta_t), -sin(omega * delta_t)
+                         sin(omega * delta_t), cos(omega * delta_t)]
+
+    Arguments:
+        omegas -- array of parameters for blocks. first column is freq. (omega) and 2nd is scaling (mu), size [None, 2]
+        delta_t -- time step in trajectories from input data
+    """
     scale = tf.exp(omegas[:, 1] * delta_t)
     entry11 = tf.multiply(scale, tf.cos(omegas[:, 0] * delta_t))
     entry12 = tf.multiply(scale, tf.sin(omegas[:, 0] * delta_t))
@@ -148,7 +225,15 @@ def form_complex_conjugate_block(omegas, delta_t):
 
 
 def varying_multiply(y, omegas, delta_t, num_real, num_complex_pairs):
-    """Multiply y-coordinates on the left by matrix L, but let matrix vary."""
+    """Multiply y-coordinates on the left by matrix L, but let matrix vary.
+
+    Arguments:
+        y -- array of shape [None, k] of y-coordinates, where L will be k x k
+        omegas -- list of arrays of parameters for the L matrices
+        delta_t -- time step in trajectories from input data
+        num_real -- number of real eigenvalues
+        num_complex_pairs -- number of pairs of complex conjugate eigenvalues
+    """
     k = y.shape[1]
     complex_list = []
 
@@ -183,7 +268,14 @@ def varying_multiply(y, omegas, delta_t, num_real, num_complex_pairs):
 
 
 def create_omega_net(phase, keep_prob, params, ycoords):
-    """Create the auxiliary (omega) network(s), which have ycoords as input and output omegas (parameters for L)."""
+    """Create the auxiliary (omega) network(s), which have ycoords as input and output omegas (parameters for L).
+
+    Arguments:
+        phase -- boolean placeholder for dropout: training phase or not training phase
+        keep_prob -- probability that weight is kept during dropout
+        params -- dictionary of parameters for experiment
+        ycoords -- array of shape [None, k] of y-coordinates, where L will be k x k
+    """
     weights = dict()
     biases = dict()
 
@@ -203,7 +295,15 @@ def create_omega_net(phase, keep_prob, params, ycoords):
 
 
 def create_one_omega_net(params, temp_name, weights, biases, widths):
-    """Create one auxiliary (omega) network for one real eigenvalue or a pair of complex conj. eigenvalues."""
+    """Create one auxiliary (omega) network for one real eigenvalue or a pair of complex conj. eigenvalues.
+
+    Arguments:
+        params -- dictionary of parameters for experiment
+        temp_name -- string for prefix on weight matrices, i.e. OC1 or OR1
+        weights -- dictionary of weights
+        biases -- dictionary of biases
+        widths -- array or list of widths for layers of network
+    """
     weightsO, biasesO = decoder(widths, dist_weights=params['dist_weights_omega'],
                                 dist_biases=params['dist_biases_omega'], scale=params['scale_omega'], name=temp_name,
                                 first_guess=params['first_guess_omega'])
@@ -212,8 +312,16 @@ def create_one_omega_net(params, temp_name, weights, biases, widths):
 
 
 def omega_net_apply(phase, keep_prob, params, ycoords, weights, biases):
-    """Apply the omega (auxiliary) network(s) to the y-coordinates."""
-    """"""
+    """Apply the omega (auxiliary) network(s) to the y-coordinates.
+
+    Arguments:
+        phase -- boolean placeholder for dropout: training phase or not training phase
+        keep_prob -- probability that weight is kept during dropout
+        params -- dictionary of parameters for experiment
+        ycoords -- array of shape [None, k] of y-coordinates, where L will be k x k
+        weights -- dictionary of weights
+        biases -- dictionary of biases
+    """
     omegas = []
     for j in np.arange(params['num_complex_pairs']):
         temp_name = 'OC%d_' % (j + 1)
@@ -229,7 +337,17 @@ def omega_net_apply(phase, keep_prob, params, ycoords, weights, biases):
 
 
 def omega_net_apply_one(phase, keep_prob, params, ycoords, weights, biases, name):
-    """Apply one auxiliary (omega) network for one real eigenvalue or a pair of complex conj. eigenvalues."""
+    """Apply one auxiliary (omega) network for one real eigenvalue or a pair of complex conj. eigenvalues.
+
+    Arguments:
+        phase -- boolean placeholder for dropout: training phase or not training phase
+        keep_prob -- probability that weight is kept during dropout
+        params -- dictionary of parameters for experiment
+        ycoords -- array of shape [None, k] of y-coordinates, where L will be k x k
+        weights -- dictionary of weights
+        biases -- dictionary of biases
+        name -- string for prefix on weight matrices, i.e. OC1 or OR1
+    """
     if len(ycoords.shape) == 1:
         ycoords = ycoords[:, np.newaxis]
 
@@ -241,13 +359,19 @@ def omega_net_apply_one(phase, keep_prob, params, ycoords, weights, biases, name
         input = ycoords
 
     omegas = encoder_apply_one_shift(input, weights, biases, params['act_type'], params['batch_flag'], phase,
-                                     out_flag=0, keep_prob=keep_prob, name=name,
+                                     keep_prob=keep_prob, name=name,
                                      num_encoder_weights=params['num_omega_weights'])
     return omegas
 
 
 def create_koopman_net(phase, keep_prob, params):
-    """Create a Koopman network that encodes, advances in time, and decodes."""
+    """Create a Koopman network that encodes, advances in time, and decodes.
+
+    Arguments:
+        phase -- boolean placeholder for dropout: training phase or not training phase
+        keep_prob -- probability that weight is kept during dropout
+        params -- dictionary of parameters for experiment
+    """
     depth = int((params['d'] - 4) / 2)
 
     max_shifts_to_stack = helperfns.num_shifts_in_stack(params)
@@ -257,7 +381,7 @@ def create_koopman_net(phase, keep_prob, params):
                                  dist_biases=params['dist_biases'][0:depth + 1], scale=params['scale'],
                                  num_shifts_max=max_shifts_to_stack, first_guess=params['first_guess'])
     params['num_encoder_weights'] = len(weights)
-    g_list = encoder_apply(x, weights, biases, params['act_type'], params['batch_flag'], phase, out_flag=0,
+    g_list = encoder_apply(x, weights, biases, params['act_type'], params['batch_flag'], phase,
                            shifts_middle=params['shifts_middle'], keep_prob=keep_prob,
                            num_encoder_weights=params['num_encoder_weights'])
 
