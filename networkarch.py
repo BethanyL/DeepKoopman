@@ -138,6 +138,7 @@ def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, phase, keep
 
 
 def form_complex_conjugate_block(omegas, delta_t):
+    """Form a 2x2 block for a complex conj. pair of eigenvalues, but for each example: dimension [None, 2, 2]"""
     scale = tf.exp(omegas[:, 1] * delta_t)
     entry11 = tf.multiply(scale, tf.cos(omegas[:, 0] * delta_t))
     entry12 = tf.multiply(scale, tf.sin(omegas[:, 0] * delta_t))
@@ -147,7 +148,7 @@ def form_complex_conjugate_block(omegas, delta_t):
 
 
 def varying_multiply(y, omegas, delta_t, num_real, num_complex_pairs):
-    # multiply on the left: y*omegas
+    """Multiply y-coordinates on the left by matrix L, but let matrix vary."""
     k = y.shape[1]
     complex_list = []
 
@@ -182,8 +183,7 @@ def varying_multiply(y, omegas, delta_t, num_real, num_complex_pairs):
 
 
 def create_omega_net(phase, keep_prob, params, ycoords):
-    # ycoords is [None, 2] or [None, 3], etc. (temp. only handle 2-diml or 3-diml case)
-
+    """Create the auxiliary (omega) network(s), which have ycoords as input and output omegas (parameters for L)."""
     weights = dict()
     biases = dict()
 
@@ -203,6 +203,7 @@ def create_omega_net(phase, keep_prob, params, ycoords):
 
 
 def create_one_omega_net(params, temp_name, weights, biases, widths):
+    """Create one auxiliary (omega) network for one real eigenvalue or a pair of complex conj. eigenvalues."""
     weightsO, biasesO = decoder(widths, dist_weights=params['dist_weights_omega'],
                                 dist_biases=params['dist_biases_omega'], scale=params['scale_omega'], name=temp_name,
                                 first_guess=params['first_guess_omega'])
@@ -211,6 +212,8 @@ def create_one_omega_net(params, temp_name, weights, biases, widths):
 
 
 def omega_net_apply(phase, keep_prob, params, ycoords, weights, biases):
+    """Apply the omega (auxiliary) network(s) to the y-coordinates."""
+    """"""
     omegas = []
     for j in np.arange(params['num_complex_pairs']):
         temp_name = 'OC%d_' % (j + 1)
@@ -226,6 +229,7 @@ def omega_net_apply(phase, keep_prob, params, ycoords, weights, biases):
 
 
 def omega_net_apply_one(phase, keep_prob, params, ycoords, weights, biases, name):
+    """Apply one auxiliary (omega) network for one real eigenvalue or a pair of complex conj. eigenvalues."""
     if len(ycoords.shape) == 1:
         ycoords = ycoords[:, np.newaxis]
 
