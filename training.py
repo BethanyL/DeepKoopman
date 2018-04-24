@@ -20,6 +20,13 @@ def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
         params -- dictionary of parameters for experiment
         phase -- boolean placeholder for dropout: training phase or not training phase
         keep_prob -- probability that weight is kept during dropout
+
+    Returns:
+        loss1 -- autoencoder loss function
+        loss2 -- dynamics/prediction loss function
+        loss3 -- linearity loss function
+        loss_Linf -- inf norm on autoencoder loss and one-step prediction loss
+        loss -- sum of above four losses
     """
     # Minimize the mean squared errors.
     # subtraction and squaring element-wise, then average over both dimensions
@@ -36,7 +43,7 @@ def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
     mean_squared_error = tf.reduce_mean(tf.reduce_mean(tf.square(y[0] - tf.squeeze(x[0, :, :])), 1))
     loss1 = params['recon_lam'] * tf.truediv(mean_squared_error, loss1_denominator)
 
-    # gets dynamics
+    # gets dynamics/prediction
     loss2 = tf.zeros([1, ], dtype=tf.float64)
     if params['num_shifts'] > 0:
         for j in np.arange(params['num_shifts']):
@@ -77,7 +84,7 @@ def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
 
         loss3 = loss3 / params['num_shifts_middle']
 
-    # inf norm on autoencoder error
+    # inf norm on autoencoder error and one prediction step
     if params['relative_loss']:
         Linf1_den = tf.norm(tf.norm(tf.squeeze(x[0, :, :]), axis=1, ord=np.inf), ord=np.inf) + denominator_nonzero
         Linf2_den = tf.norm(tf.norm(tf.squeeze(x[1, :, :]), axis=1, ord=np.inf), ord=np.inf) + denominator_nonzero
@@ -104,6 +111,12 @@ def define_regularization(params, trainable_var, loss, loss1):
         trainable_var -- list of trainable TensorFlow variables
         loss -- the unregularized loss
         loss1 -- the autoenocder component of the loss
+
+    Returns:
+        loss_L1 -- L1 regularization on weights W and b
+        loss_L2 -- L2 regularization on weights W
+        regularized_loss -- loss + regularization
+        regularized_loss1 -- loss1 (autoencoder loss) + regularization
     """
     if params['L1_lam']:
         l1_regularizer = tf.contrib.layers.l1_regularizer(scale=params['L1_lam'], scope=None)
@@ -128,6 +141,9 @@ def try_net(data_val, params):
     Arguments:
         data_val -- array containing validation dataset
         params -- dictionary of parameters for experiment
+
+    Returns:
+        None
     """
     # SET UP NETWORK
     phase = tf.placeholder(tf.bool, name='phase')
@@ -266,6 +282,9 @@ def main_exp(params):
 
     Arguments:
         params -- dictionary of parameters for experiment
+
+    Returns:
+        None
     """
     helperfns.set_defaults(params)
 

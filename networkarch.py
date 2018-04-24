@@ -13,6 +13,9 @@ def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0
         distribution -- string for which distribution to use for random initialization
         scale -- (for tn distribution): standard deviation of normal distribution before truncation
         first_guess -- (for tn distribution): array of first guess for weight matrix, added to tn dist.
+
+    Returns:
+        a TensorFlow variable for a weight matrix
     """
     if distribution == 'tn':
         initial = tf.truncated_normal(shape, stddev=scale, dtype=tf.float64) + first_guess
@@ -49,6 +52,9 @@ def bias_variable(shape, var_name, distribution=''):
         shape -- array giving shape of output bias variable
         var_name -- string naming bias variable
         distribution -- string for which distribution to use for random initialization (file name)
+
+    Returns:
+        a TensorFlow variable for a bias vector
     """
     if distribution:
         initial = np.genfromtxt(distribution, delimiter=',', dtype=np.float64)
@@ -67,6 +73,11 @@ def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_gues
         scale -- (for tn distribution of weight matrices): standard deviation of normal distribution before truncation
         num_shifts_max -- number of shifts (time steps) that losses will use (max of num_shifts and num_shifts_middle)
         first_guess -- (for tn dist. of weight matrices): array of first guess for weight matrix, added to tn dist.
+
+    Returns:
+        x -- placeholder for input
+        weights -- dictionary of weights
+        biases -- dictionary of biases
     """
     x = tf.placeholder(tf.float64, [num_shifts_max + 1, None, widths[0]])
 
@@ -98,6 +109,9 @@ def encoder_apply(x, weights, biases, act_type, batch_flag, phase, shifts_middle
         keep_prob -- probability that weight is kept during dropout
         name -- string for prefix on weight matrices, default 'E' for encoder
         num_encoder_weights -- number of weight matrices (layers) in encoder network, default 1
+
+    Returns:
+        y -- list, output of encoder network applied to each time shift in input x
     """
     y = []
     num_shifts_middle = len(shifts_middle)
@@ -130,6 +144,9 @@ def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, p
         keep_prob -- probability that weight is kept during dropout
         name -- string for prefix on weight matrices, default 'E' (for "encoder")
         num_encoder_weights -- number of weight matrices (layers) in encoder network, default 1
+
+    Returns:
+        final -- output of encoder network applied to input prev_layer (a particular time step / shift)
     """
     for i in np.arange(num_encoder_weights - 1):
         h1 = tf.matmul(prev_layer, weights['W%s%d' % (name, i + 1)]) + biases['b%s%d' % (name, i + 1)]
@@ -163,6 +180,10 @@ def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
         scale -- (for tn distribution of weight matrices): standard deviation of normal distribution before truncation
         name -- string for prefix on weight matrices, default 'D' (for "decoder")
         first_guess -- (for tn dist. of weight matrices): array of first guess for weight matrix, added to tn dist.
+
+    Returns:
+        weights -- dictionary of weights
+        biases -- dictionary of biases
     """
     weights = dict()
     biases = dict()
@@ -188,6 +209,9 @@ def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, phase, keep
         phase -- boolean placeholder for dropout: training phase or not training phase
         keep_prob -- probability that weight is kept during dropout
         num_decoder_weights -- number of weight matrices (layers) in decoder network
+
+    Returns:
+        output of decoder network applied to input prev_layer
     """
     for i in np.arange(num_decoder_weights - 1):
         h1 = tf.matmul(prev_layer, weights['WD%d' % (i + 1)]) + biases['bD%d' % (i + 1)]
@@ -215,6 +239,9 @@ def form_complex_conjugate_block(omegas, delta_t):
     Arguments:
         omegas -- array of parameters for blocks. first column is freq. (omega) and 2nd is scaling (mu), size [None, 2]
         delta_t -- time step in trajectories from input data
+
+    Returns:
+        stack of 2x2 blocks, size [None, 2, 2], where first dimension matches first dimension of omegas
     """
     scale = tf.exp(omegas[:, 1] * delta_t)
     entry11 = tf.multiply(scale, tf.cos(omegas[:, 0] * delta_t))
@@ -233,6 +260,9 @@ def varying_multiply(y, omegas, delta_t, num_real, num_complex_pairs):
         delta_t -- time step in trajectories from input data
         num_real -- number of real eigenvalues
         num_complex_pairs -- number of pairs of complex conjugate eigenvalues
+
+    Returns:
+        array same size as input y, but advanced to next time step
     """
     k = y.shape[1]
     complex_list = []
@@ -275,6 +305,11 @@ def create_omega_net(phase, keep_prob, params, ycoords):
         keep_prob -- probability that weight is kept during dropout
         params -- dictionary of parameters for experiment
         ycoords -- array of shape [None, k] of y-coordinates, where L will be k x k
+
+    Returns:
+        omegas -- list, output of omega (auxiliary) network(s) applied to input ycoords
+        weights -- dictionary of weights
+        biases -- dictionary of biases
     """
     weights = dict()
     biases = dict()
@@ -303,6 +338,9 @@ def create_one_omega_net(params, temp_name, weights, biases, widths):
         weights -- dictionary of weights
         biases -- dictionary of biases
         widths -- array or list of widths for layers of network
+
+    Returns:
+        None (but side effect of updating weights and biases dictionaries)
     """
     weightsO, biasesO = decoder(widths, dist_weights=params['dist_weights_omega'],
                                 dist_biases=params['dist_biases_omega'], scale=params['scale_omega'], name=temp_name,
@@ -321,6 +359,9 @@ def omega_net_apply(phase, keep_prob, params, ycoords, weights, biases):
         ycoords -- array of shape [None, k] of y-coordinates, where L will be k x k
         weights -- dictionary of weights
         biases -- dictionary of biases
+
+    Returns:
+        omegas -- list, output of omega (auxiliary) network(s) applied to input ycoords
     """
     omegas = []
     for j in np.arange(params['num_complex_pairs']):
@@ -347,6 +388,9 @@ def omega_net_apply_one(phase, keep_prob, params, ycoords, weights, biases, name
         weights -- dictionary of weights
         biases -- dictionary of biases
         name -- string for prefix on weight matrices, i.e. OC1 or OR1
+
+    Returns:
+        omegas - output of one auxiliary (omega) network to input ycoords
     """
     if len(ycoords.shape) == 1:
         ycoords = ycoords[:, np.newaxis]
@@ -371,6 +415,13 @@ def create_koopman_net(phase, keep_prob, params):
         phase -- boolean placeholder for dropout: training phase or not training phase
         keep_prob -- probability that weight is kept during dropout
         params -- dictionary of parameters for experiment
+
+    Returns:
+        x -- placeholder for input
+        y -- list, output of decoder applied to each shift: g_list[0], K*g_list[0], K^2*g_list[0], ..., length num_shifts + 1
+        g_list -- list, output of encoder applied to each shift in input x, length num_shifts_middle + 1
+        weights -- dictionary of weights
+        biases -- dictionary of biases
     """
     depth = int((params['d'] - 4) / 2)
 

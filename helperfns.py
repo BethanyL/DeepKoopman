@@ -10,9 +10,12 @@ def stack_data(data, num_shifts, len_time):
     """Stack data from a 2D array into a 3D array.
 
     Arguments:
-        data -- data matrix to be reshaped
+        data -- 2D data array to be reshaped
         num_shifts -- number of shifts (time steps) that losses will use (maximum is len_time - 1)
         len_time -- number of time steps in each trajectory in data
+
+    Returns:
+        data_tensor -- data reshaped into 3D array, shape: num_shifts + 1, num_traj * (len_time - num_shifts), n
     """
     nd = data.ndim
     if nd > 1:
@@ -41,6 +44,9 @@ def choose_optimizer(params, regularized_loss, trainable_var):
         params -- dictionary of parameters for experiment
         regularized_loss -- loss, including regularization
         trainable_var -- list of trainable TensorFlow variables
+
+    Returns:
+        optimizer -- optimizer from TensorFlow Class optimizer
     """
     if params['opt_alg'] == 'adam':
         optimizer = tf.train.AdamOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
@@ -97,6 +103,10 @@ def check_progress(start, best_error, params):
         start -- time that experiment started
         best_error -- best error so far in training
         params -- dictionary of parameters for experiment
+
+    Returns:
+        finished -- 0 if should continue training, 1 if should stop training
+        save_now -- 0 if don't need to save results, 1 if should save results
     """
     finished = 0
     save_now = 0
@@ -215,6 +225,9 @@ def save_files(sess, csv_path, train_val_error, params, weights, biases):
         params -- dictionary of parameters for experiment
         weights -- dictionary of weights for all networks
         biases -- dictionary of biases for all networks
+
+    Returns:
+        None (but side effect of saving files and updating params dict.)
     """
     np.savetxt(csv_path, train_val_error, delimiter=',')
 
@@ -236,6 +249,9 @@ def save_params(params):
 
     Arguments:
         params -- dictionary of parameters for experiment
+
+    Returns:
+        None (but side effect of saving params dict to pkl file)
     """
     with open(params['model_path'].replace('ckpt', 'pkl'), 'wb') as f:
         pickle.dump(params, f, pickle.HIGHEST_PROTOCOL)
@@ -246,6 +262,9 @@ def set_defaults(params):
 
     Arguments:
         params -- dictionary of parameters for experiment
+
+    Returns:
+        None (but side effect of updating params dict)
     """
     # defaults related to dataset
     if 'data_name' not in params:
@@ -438,6 +457,9 @@ def num_shifts_in_stack(params):
 
     Arguments:
         params -- dictionary of parameters for experiment
+
+    Returns:
+        max_shifts_to_stack -- max number of shifts to use in loss functions
     """
     max_shifts_to_stack = 1
     if params['num_shifts']:
