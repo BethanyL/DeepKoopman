@@ -27,6 +27,9 @@ def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
         loss3 -- linearity loss function
         loss_Linf -- inf norm on autoencoder loss and one-step prediction loss
         loss -- sum of above four losses
+
+    Side effects:
+        None
     """
     # Minimize the mean squared errors.
     # subtraction and squaring element-wise, then average over both dimensions
@@ -117,6 +120,9 @@ def define_regularization(params, trainable_var, loss, loss1):
         loss_L2 -- L2 regularization on weights W
         regularized_loss -- loss + regularization
         regularized_loss1 -- loss1 (autoencoder loss) + regularization
+
+    Side effects:
+        None
     """
     if params['L1_lam']:
         l1_regularizer = tf.contrib.layers.l1_regularizer(scale=params['L1_lam'], scope=None)
@@ -144,6 +150,11 @@ def try_net(data_val, params):
 
     Returns:
         None
+
+    Side effects:
+        Changes params dict
+        Saves files
+        Builds TensorFlow graph (reset in main_exp)
     """
     # SET UP NETWORK
     phase = tf.placeholder(tf.bool, name='phase')
@@ -275,6 +286,7 @@ def try_net(data_val, params):
     params['time_exp'] = time.time() - start
     saver.restore(sess, params['model_path'])
     helperfns.save_files(sess, csv_path, train_val_error, params, weights, biases)
+    tf.reset_default_graph()
 
 
 def main_exp(params):
@@ -285,6 +297,11 @@ def main_exp(params):
 
     Returns:
         None
+
+    Side effects:
+        Changes params dict
+        If doesn't already exist, creates folder params['folder_name']
+        Saves files in that folder
     """
     helperfns.set_defaults(params)
 
@@ -294,4 +311,3 @@ def main_exp(params):
     # data is num_steps x num_examples x n but load flattened version (matrix instead of tensor)
     data_val = np.loadtxt(('./data/%s_val_x.csv' % (params['data_name'])), delimiter=',', dtype=np.float64)
     try_net(data_val, params)
-    tf.reset_default_graph()

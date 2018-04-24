@@ -16,6 +16,9 @@ def stack_data(data, num_shifts, len_time):
 
     Returns:
         data_tensor -- data reshaped into 3D array, shape: num_shifts + 1, num_traj * (len_time - num_shifts), n
+
+    Side effects:
+        None
     """
     nd = data.ndim
     if nd > 1:
@@ -47,6 +50,9 @@ def choose_optimizer(params, regularized_loss, trainable_var):
 
     Returns:
         optimizer -- optimizer from TensorFlow Class optimizer
+
+    Side effects:
+        None
     """
     if params['opt_alg'] == 'adam':
         optimizer = tf.train.AdamOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
@@ -107,6 +113,10 @@ def check_progress(start, best_error, params):
     Returns:
         finished -- 0 if should continue training, 1 if should stop training
         save_now -- 0 if don't need to save results, 1 if should save results
+
+    Side effects:
+        May update params dict: stop_condition, been5min, been20min, been40min, been1hr, been2hr, been3hr, been4hr,
+        beenHalf
     """
     finished = 0
     save_now = 0
@@ -228,6 +238,10 @@ def save_files(sess, csv_path, train_val_error, params, weights, biases):
 
     Returns:
         None (but side effect of saving files and updating params dict.)
+
+    Side effects:
+        Save train_val_error, each weight W, each bias b, and params dict to file.
+        Update params dict: minTrain, minTest, minRegTrain, minRegTest
     """
     np.savetxt(csv_path, train_val_error, delimiter=',')
 
@@ -251,7 +265,10 @@ def save_params(params):
         params -- dictionary of parameters for experiment
 
     Returns:
-        None (but side effect of saving params dict to pkl file)
+        None
+
+    Side effects:
+        Saves params dict to pkl file
     """
     with open(params['model_path'].replace('ckpt', 'pkl'), 'wb') as f:
         pickle.dump(params, f, pickle.HIGHEST_PROTOCOL)
@@ -265,6 +282,9 @@ def set_defaults(params):
 
     Returns:
         None (but side effect of updating params dict)
+
+    Side effects:
+        May update params dict
     """
     # defaults related to dataset
     if 'data_name' not in params:
@@ -460,6 +480,9 @@ def num_shifts_in_stack(params):
 
     Returns:
         max_shifts_to_stack -- max number of shifts to use in loss functions
+
+    Side effects:
+        None
     """
     max_shifts_to_stack = 1
     if params['num_shifts']:

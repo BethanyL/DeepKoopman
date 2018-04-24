@@ -16,6 +16,9 @@ def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0
 
     Returns:
         a TensorFlow variable for a weight matrix
+
+    Side effects:
+        None
     """
     if distribution == 'tn':
         initial = tf.truncated_normal(shape, stddev=scale, dtype=tf.float64) + first_guess
@@ -55,6 +58,9 @@ def bias_variable(shape, var_name, distribution=''):
 
     Returns:
         a TensorFlow variable for a bias vector
+
+    Side effects:
+        None
     """
     if distribution:
         initial = np.genfromtxt(distribution, delimiter=',', dtype=np.float64)
@@ -78,6 +84,9 @@ def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_gues
         x -- placeholder for input
         weights -- dictionary of weights
         biases -- dictionary of biases
+
+    Side effects:
+        None
     """
     x = tf.placeholder(tf.float64, [num_shifts_max + 1, None, widths[0]])
 
@@ -112,6 +121,9 @@ def encoder_apply(x, weights, biases, act_type, batch_flag, phase, shifts_middle
 
     Returns:
         y -- list, output of encoder network applied to each time shift in input x
+
+    Side effects:
+        None
     """
     y = []
     num_shifts_middle = len(shifts_middle)
@@ -147,6 +159,9 @@ def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, p
 
     Returns:
         final -- output of encoder network applied to input prev_layer (a particular time step / shift)
+
+    Side effects:
+        None
     """
     for i in np.arange(num_encoder_weights - 1):
         h1 = tf.matmul(prev_layer, weights['W%s%d' % (name, i + 1)]) + biases['b%s%d' % (name, i + 1)]
@@ -184,6 +199,9 @@ def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
     Returns:
         weights -- dictionary of weights
         biases -- dictionary of biases
+
+    Side effects:
+        None
     """
     weights = dict()
     biases = dict()
@@ -212,6 +230,9 @@ def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, phase, keep
 
     Returns:
         output of decoder network applied to input prev_layer
+
+    Side effects:
+        None
     """
     for i in np.arange(num_decoder_weights - 1):
         h1 = tf.matmul(prev_layer, weights['WD%d' % (i + 1)]) + biases['bD%d' % (i + 1)]
@@ -242,6 +263,9 @@ def form_complex_conjugate_block(omegas, delta_t):
 
     Returns:
         stack of 2x2 blocks, size [None, 2, 2], where first dimension matches first dimension of omegas
+
+    Side effects:
+        None
     """
     scale = tf.exp(omegas[:, 1] * delta_t)
     entry11 = tf.multiply(scale, tf.cos(omegas[:, 0] * delta_t))
@@ -263,6 +287,9 @@ def varying_multiply(y, omegas, delta_t, num_real, num_complex_pairs):
 
     Returns:
         array same size as input y, but advanced to next time step
+
+    Side effects:
+        None
     """
     k = y.shape[1]
     complex_list = []
@@ -310,6 +337,9 @@ def create_omega_net(phase, keep_prob, params, ycoords):
         omegas -- list, output of omega (auxiliary) network(s) applied to input ycoords
         weights -- dictionary of weights
         biases -- dictionary of biases
+
+    Side effects:
+        Adds 'num_omega_weights' key to params dict
     """
     weights = dict()
     biases = dict()
@@ -340,7 +370,10 @@ def create_one_omega_net(params, temp_name, weights, biases, widths):
         widths -- array or list of widths for layers of network
 
     Returns:
-        None (but side effect of updating weights and biases dictionaries)
+        None
+
+    Side effects:
+        Updates weights and biases dictionaries
     """
     weightsO, biasesO = decoder(widths, dist_weights=params['dist_weights_omega'],
                                 dist_biases=params['dist_biases_omega'], scale=params['scale_omega'], name=temp_name,
@@ -362,6 +395,9 @@ def omega_net_apply(phase, keep_prob, params, ycoords, weights, biases):
 
     Returns:
         omegas -- list, output of omega (auxiliary) network(s) applied to input ycoords
+
+    Side effects:
+        None
     """
     omegas = []
     for j in np.arange(params['num_complex_pairs']):
@@ -391,6 +427,9 @@ def omega_net_apply_one(phase, keep_prob, params, ycoords, weights, biases, name
 
     Returns:
         omegas - output of one auxiliary (omega) network to input ycoords
+
+    Side effects:
+        None
     """
     if len(ycoords.shape) == 1:
         ycoords = ycoords[:, np.newaxis]
@@ -422,6 +461,9 @@ def create_koopman_net(phase, keep_prob, params):
         g_list -- list, output of encoder applied to each shift in input x, length num_shifts_middle + 1
         weights -- dictionary of weights
         biases -- dictionary of biases
+
+    Side effects:
+        Adds more entries to params dict: num_encoder_weights, num_omega_weights, num_decoder_weights
     """
     depth = int((params['d'] - 4) / 2)
 
