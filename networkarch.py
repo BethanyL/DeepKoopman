@@ -10,15 +10,17 @@ def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0
     Arguments:
         shape -- array giving shape of output weight variable
         var_name -- string naming weight variable
-        distribution -- string for which distribution to use for random initialization
-        scale -- (for tn distribution): standard deviation of normal distribution before truncation
-        first_guess -- (for tn distribution): array of first guess for weight matrix, added to tn dist.
+        distribution -- string for which distribution to use for random initialization (default 'tn')
+        scale -- (for tn distribution): standard deviation of normal distribution before truncation (default 0.1)
+        first_guess -- (for tn distribution): array of first guess for weight matrix, added to tn dist. (default 0)
 
     Returns:
         a TensorFlow variable for a weight matrix
 
     Side effects:
         None
+
+    Raises ValueError if distribution is filename but shape of data in file does not match input shape
     """
     if distribution == 'tn':
         initial = tf.truncated_normal(shape, stddev=scale, dtype=tf.float64) + first_guess
@@ -54,7 +56,7 @@ def bias_variable(shape, var_name, distribution=''):
     Arguments:
         shape -- array giving shape of output bias variable
         var_name -- string naming bias variable
-        distribution -- string for which distribution to use for random initialization (file name)
+        distribution -- string for which distribution to use for random initialization (file name) (default '')
 
     Returns:
         a TensorFlow variable for a bias vector
@@ -116,8 +118,8 @@ def encoder_apply(x, weights, biases, act_type, batch_flag, phase, shifts_middle
         phase -- boolean placeholder for dropout: training phase or not training phase
         shifts_middle -- number of shifts (steps) in x to apply encoder to for linearity loss
         keep_prob -- probability that weight is kept during dropout
-        name -- string for prefix on weight matrices, default 'E' for encoder
-        num_encoder_weights -- number of weight matrices (layers) in encoder network, default 1
+        name -- string for prefix on weight matrices (default 'E' for encoder)
+        num_encoder_weights -- number of weight matrices (layers) in encoder network (default 1)
 
     Returns:
         y -- list, output of encoder network applied to each time shift in input x
@@ -154,8 +156,8 @@ def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, p
         batch_flag -- 0 if no batch_normalization, 1 if batch_normalization
         phase -- boolean placeholder for dropout: training phase or not training phase
         keep_prob -- probability that weight is kept during dropout
-        name -- string for prefix on weight matrices, default 'E' (for "encoder")
-        num_encoder_weights -- number of weight matrices (layers) in encoder network, default 1
+        name -- string for prefix on weight matrices (default 'E' for encoder)
+        num_encoder_weights -- number of weight matrices (layers) in encoder network (default 1)
 
     Returns:
         final -- output of encoder network applied to input prev_layer (a particular time step / shift)
@@ -193,8 +195,9 @@ def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
         dist_weights -- array or list of strings for distributions of weight matrices
         dist_biases -- array or list of strings for distributions of bias vectors
         scale -- (for tn distribution of weight matrices): standard deviation of normal distribution before truncation
-        name -- string for prefix on weight matrices, default 'D' (for "decoder")
+        name -- string for prefix on weight matrices (default 'D' for decoder)
         first_guess -- (for tn dist. of weight matrices): array of first guess for weight matrix, added to tn dist.
+            (default 0)
 
     Returns:
         weights -- dictionary of weights
@@ -464,6 +467,8 @@ def create_koopman_net(phase, keep_prob, params):
 
     Side effects:
         Adds more entries to params dict: num_encoder_weights, num_omega_weights, num_decoder_weights
+
+    Raises ValueError if len(y) is not len(params['shifts']) + 1
     """
     depth = int((params['d'] - 4) / 2)
 

@@ -53,6 +53,9 @@ def choose_optimizer(params, regularized_loss, trainable_var):
 
     Side effects:
         None
+
+    Raises ValueError if params['opt_alg'] is not 'adam', 'adadelta', 'adagrad', 'adagradDA', 'ftrl', 'proximalGD',
+        'proximalAdagrad', or 'RMS'
     """
     if params['opt_alg'] == 'adam':
         optimizer = tf.train.AdamOptimizer(params['learning_rate']).minimize(regularized_loss, var_list=trainable_var)
@@ -285,6 +288,10 @@ def set_defaults(params):
 
     Side effects:
         May update params dict
+
+    Raises KeyError if params is missing data_name, len_time, data_train_len, delta_t, widths, hidden_widths_omega,
+        num_evals, num_real, or num_complex_pairs
+    Raises ValueError if num_evals != 2 * num_complex_pairs + num_real
     """
     # defaults related to dataset
     if 'data_name' not in params:
