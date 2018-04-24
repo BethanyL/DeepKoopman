@@ -269,12 +269,13 @@ def try_net(data_val, params):
 
                 np.savetxt(csv_path, train_val_error, delimiter=',')
                 finished, save_now = helperfns.check_progress(start, best_error, params)
+                count = count + 1
                 if save_now:
                     train_val_error_trunc = train_val_error[range(count), :]
                     helperfns.save_files(sess, csv_path, train_val_error_trunc, params, weights, biases)
                 if finished:
                     break
-                count = count + 1
+
 
             if step > params['num_steps_per_file_pass']:
                 params['stop_condition'] = 'reached num_steps_per_file_pass'
@@ -286,7 +287,6 @@ def try_net(data_val, params):
     params['time_exp'] = time.time() - start
     saver.restore(sess, params['model_path'])
     helperfns.save_files(sess, csv_path, train_val_error, params, weights, biases)
-    tf.reset_default_graph()
 
 
 def main_exp(params):
