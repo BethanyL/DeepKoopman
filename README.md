@@ -16,3 +16,7 @@ Notes on running the Python experiments:
 - The experiment scripts include a loop over 200 random experiments (random parameters and random initializations of weights). You'll probably want to kill off the script earlier than that!
 - Each random experiment can run up to params['max_time'] (in these experiments, 4 or 6 hours) but may be automatically terminated earlier if the error is not decreasing enough. If one experiment is not doing well, the script moves on to another random experiment.
 - If the code decides to end an experiment, it saves the current results. It also saves every hour. 
+
+Postprocessing:
+- You might want to use something like ./postprocessing/InvestigateResultsExample.ipynb to check out your results. Which of your models has the best validation error so far? How does validation error compare to your hyperparameter choices? 
+- To see what I did to dive into a particular trained deep learning model on a dataset, see the notebooks ./postprocessing/BestModel-DiscreteSpectrumExample.ipynb, ./postprocessing/BestModel-Pendulum.ipynb, etc. These notebooks also show how I calculated numbers and created figures for the paper. 
