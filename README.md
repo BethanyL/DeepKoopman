@@ -24,3 +24,18 @@ Postprocessing:
 New to deep learning? Here is some context:
 - It is currently normal in deep learning to need to try a range of hyperparameters ("hyperparameter search"). For example: how many layers should your network have? How wide should each layer be? You try some options and pick the best result. (See next bullet point.) Further, the random initialization of your weights matters, so (unless you fix the seed of your random number generator) even with fixed hyperparameters, you can re-run your training multiple times and get different models with different errors. I didn't fix my seeds, so if you re-run my code multiple times, you can get different models and errors. 
 - It is standard to split your data into three sets: training, validation, and testing. You fit your neural network model to your training data. You only use the validation data to compare different models and choose the best one. The error on your validation data estimates how well your model will generalize to new data. You set aside the testing data even further. You only calcuate the error on the test data at the very end, after you've commited to a particular model. This should give a better estimate of how well your model will generalize, since you may have already heavily relied on your validation data when choosing a model. 
+
+## Citation
+```
+@article{lusch2018deep,
+  title={Deep learning for universal linear embeddings of nonlinear dynamics},
+  author={Lusch, Bethany and Kutz, J Nathan and Brunton, Steven L},
+  journal={Nature Communications},
+  volume={9},
+  number={1},
+  pages={4950},
+  year={2018},
+  publisher={Nature Publishing Group},
+  Doi = {10.1038/s41467-018-07210-0}
+}
+```
