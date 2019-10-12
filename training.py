@@ -1,8 +1,7 @@
-import os
-import time
-
 import numpy as np
+import os
 import tensorflow as tf
+import time
 
 import helperfns
 import networkarch as net
@@ -275,7 +274,6 @@ def try_net(data_val, params):
                     helperfns.save_files(sess, csv_path, train_val_error_trunc, params, weights, biases)
                 if finished:
                     break
-
 
             if step > params['num_steps_per_file_pass']:
                 params['stop_condition'] = 'reached num_steps_per_file_pass'
