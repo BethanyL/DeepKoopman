@@ -1,7 +1,6 @@
 import copy
-import random as r
-
 import numpy as np
+import random as r
 
 import training
 
