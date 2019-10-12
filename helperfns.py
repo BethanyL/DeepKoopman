@@ -1,8 +1,9 @@
 import datetime
-import numpy as np
 import pickle
-import tensorflow as tf
 import time
+
+import numpy as np
+import tensorflow as tf
 
 
 def stack_data(data, num_shifts, len_time):
