@@ -1,7 +1,8 @@
-import numpy as np
 import os
-import tensorflow as tf
 import time
+
+import numpy as np
+import tensorflow as tf
 
 import helperfns
 import networkarch as net
@@ -285,7 +286,7 @@ def try_net(data_val, params):
     params['time_exp'] = time.time() - start
     saver.restore(sess, params['model_path'])
     helperfns.save_files(sess, csv_path, train_val_error, params, weights, biases)
-
+    tf.reset_default_graph()
 
 def main_exp(params):
     """Set up and run one random experiment.
