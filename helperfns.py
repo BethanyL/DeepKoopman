@@ -435,9 +435,6 @@ def set_defaults(params):
     if 'batch_size' not in params:
         print("setting default: no batches (use whole training file at once)")
         params['batch_size'] = 0
-    if 'dropout_rate' not in params:
-        print("setting default: no dropout")
-        params['dropout_rate'] = 1.0
 
     # setting defaults related to keeping track of training time and progress
     if 'max_time' not in params:

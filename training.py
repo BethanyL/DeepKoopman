@@ -8,7 +8,7 @@ import helperfns
 import networkarch as net
 
 
-def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
+def define_loss(x, y, g_list, weights, biases, params):
     """Define the (unregularized) loss functions for the training.
 
     Arguments:
@@ -18,8 +18,6 @@ def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
         weights -- dictionary of weights for all networks
         biases -- dictionary of biases for all networks
         params -- dictionary of parameters for experiment
-        phase -- boolean placeholder for dropout: training phase or not training phase
-        keep_prob -- probability that weight is kept during dropout
 
     Returns:
         loss1 -- autoencoder loss function
@@ -66,7 +64,7 @@ def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
     count_shifts_middle = 0
     if params['num_shifts_middle'] > 0:
         # generalization of: next_step = tf.matmul(g_list[0], L_pow)
-        omegas = net.omega_net_apply(phase, keep_prob, params, g_list[0], weights, biases)
+        omegas = net.omega_net_apply(params, g_list[0], weights, biases)
         next_step = net.varying_multiply(g_list[0], omegas, params['delta_t'], params['num_real'],
                                          params['num_complex_pairs'])
         # multiply g_list[0] by L (j+1) times
@@ -81,7 +79,7 @@ def define_loss(x, y, g_list, weights, biases, params, phase, keep_prob):
                     tf.reduce_mean(tf.reduce_mean(tf.square(next_step - g_list[count_shifts_middle + 1]), 1)),
                     loss3_denominator)
                 count_shifts_middle += 1
-            omegas = net.omega_net_apply(phase, keep_prob, params, next_step, weights, biases)
+            omegas = net.omega_net_apply(params, next_step, weights, biases)
             next_step = net.varying_multiply(next_step, omegas, params['delta_t'], params['num_real'],
                                              params['num_complex_pairs'])
 
@@ -157,15 +155,13 @@ def try_net(data_val, params):
         Builds TensorFlow graph (reset in main_exp)
     """
     # SET UP NETWORK
-    phase = tf.placeholder(tf.bool, name='phase')
-    keep_prob = tf.placeholder(tf.float64, shape=[], name='keep_prob')
-    x, y, g_list, weights, biases = net.create_koopman_net(phase, keep_prob, params)
+    x, y, g_list, weights, biases = net.create_koopman_net(params)
 
     max_shifts_to_stack = helperfns.num_shifts_in_stack(params)
 
     # DEFINE LOSS FUNCTION
     trainable_var = tf.trainable_variables()
-    loss1, loss2, loss3, loss_Linf, loss = define_loss(x, y, g_list, weights, biases, params, phase, keep_prob)
+    loss1, loss2, loss3, loss_Linf, loss = define_loss(x, y, g_list, weights, biases, params)
     loss_L1, loss_L2, regularized_loss, regularized_loss1 = define_regularization(params, trainable_var, loss, loss1)
 
     # CHOOSE OPTIMIZATION ALGORITHM
@@ -225,9 +221,9 @@ def try_net(data_val, params):
 
             batch_data_train = data_train_tensor[:, offset:(offset + params['batch_size']), :]
 
-            feed_dict_train = {x: batch_data_train, phase: 1, keep_prob: params['dropout_rate']}
-            feed_dict_train_loss = {x: batch_data_train, phase: 1, keep_prob: 1.0}
-            feed_dict_val = {x: data_val_tensor, phase: 0, keep_prob: 1.0}
+            feed_dict_train = {x: batch_data_train}
+            feed_dict_train_loss = {x: batch_data_train}
+            feed_dict_val = {x: data_val_tensor}
 
             if (not params['been5min']) and params['auto_first']:
                 sess.run(optimizer_autoencoder, feed_dict=feed_dict_train)
@@ -287,6 +283,7 @@ def try_net(data_val, params):
     saver.restore(sess, params['model_path'])
     helperfns.save_files(sess, csv_path, train_val_error, params, weights, biases)
     tf.reset_default_graph()
+
 
 def main_exp(params):
     """Set up and run one random experiment.
