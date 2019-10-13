@@ -329,9 +329,6 @@ def set_defaults(params):
     if 'act_type' not in params:
         print("setting default: activation function is ReLU")
         params['act_type'] = 'relu'
-    if 'batch_flag' not in params:
-        print("setting default: no batch normalization")
-        params['batch_flag'] = 0
 
     if 'num_evals' not in params:
         raise KeyError("Error, must give number of evals: num_evals")

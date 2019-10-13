@@ -105,7 +105,7 @@ def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_gues
     return x, weights, biases
 
 
-def encoder_apply(x, weights, biases, act_type, batch_flag, shifts_middle, name='E', num_encoder_weights=1):
+def encoder_apply(x, weights, biases, act_type, shifts_middle, name='E', num_encoder_weights=1):
     """Apply an encoder to data x.
 
     Arguments:
@@ -113,7 +113,6 @@ def encoder_apply(x, weights, biases, act_type, batch_flag, shifts_middle, name=
         weights -- dictionary of weights
         biases -- dictionary of biases
         act_type -- string for activation type for nonlinear layers (i.e. sigmoid, relu, or elu)
-        batch_flag -- 0 if no batch_normalization, 1 if batch_normalization
         shifts_middle -- number of shifts (steps) in x to apply encoder to for linearity loss
         name -- string for prefix on weight matrices (default 'E' for encoder)
         num_encoder_weights -- number of weight matrices (layers) in encoder network (default 1)
@@ -136,11 +135,11 @@ def encoder_apply(x, weights, biases, act_type, batch_flag, shifts_middle, name=
         else:
             x_shift = tf.squeeze(x[shift, :, :])
         y.append(
-            encoder_apply_one_shift(x_shift, weights, biases, act_type, batch_flag, name, num_encoder_weights))
+            encoder_apply_one_shift(x_shift, weights, biases, act_type, name, num_encoder_weights))
     return y
 
 
-def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, name='E', num_encoder_weights=1):
+def encoder_apply_one_shift(prev_layer, weights, biases, act_type, name='E', num_encoder_weights=1):
     """Apply an encoder to data for only one time step (shift).
 
     Arguments:
@@ -148,7 +147,6 @@ def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, n
         weights -- dictionary of weights
         biases -- dictionary of biases
         act_type -- string for activation type for nonlinear layers (i.e. sigmoid, relu, or elu)
-        batch_flag -- 0 if no batch_normalization, 1 if batch_normalization
         name -- string for prefix on weight matrices (default 'E' for encoder)
         num_encoder_weights -- number of weight matrices (layers) in encoder network (default 1)
 
@@ -160,8 +158,6 @@ def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, n
     """
     for i in np.arange(num_encoder_weights - 1):
         prev_layer = tf.matmul(prev_layer, weights['W%s%d' % (name, i + 1)]) + biases['b%s%d' % (name, i + 1)]
-        if batch_flag:
-            prev_layer = tf.contrib.layers.batch_norm(prev_layer)
         if act_type == 'sigmoid':
             prev_layer = tf.sigmoid(prev_layer)
         elif act_type == 'relu':
@@ -172,9 +168,6 @@ def encoder_apply_one_shift(prev_layer, weights, biases, act_type, batch_flag, n
     # apply last layer without any nonlinearity
     final = tf.matmul(prev_layer, weights['W%s%d' % (name, num_encoder_weights)]) + biases[
         'b%s%d' % (name, num_encoder_weights)]
-
-    if batch_flag:
-        final = tf.contrib.layers.batch_norm(final)
 
     return final
 
@@ -210,7 +203,7 @@ def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
     return weights, biases
 
 
-def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, num_decoder_weights):
+def decoder_apply(prev_layer, weights, biases, act_type, num_decoder_weights):
     """Apply a decoder to data prev_layer
 
     Arguments:
@@ -218,7 +211,6 @@ def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, num_decoder
         weights -- dictionary of weights
         biases -- dictionary of biases
         act_type -- string for activation type for nonlinear layers (i.e. sigmoid, relu, or elu)
-        batch_flag -- 0 if no batch_normalization, 1 if batch_normalization
         num_decoder_weights -- number of weight matrices (layers) in decoder network
 
     Returns:
@@ -229,8 +221,6 @@ def decoder_apply(prev_layer, weights, biases, act_type, batch_flag, num_decoder
     """
     for i in np.arange(num_decoder_weights - 1):
         prev_layer = tf.matmul(prev_layer, weights['WD%d' % (i + 1)]) + biases['bD%d' % (i + 1)]
-        if batch_flag:
-            prev_layer = tf.contrib.layers.batch_norm(prev_layer)
         if act_type == 'sigmoid':
             prev_layer = tf.sigmoid(prev_layer)
         elif act_type == 'relu':
@@ -421,7 +411,7 @@ def omega_net_apply_one(params, ycoords, weights, biases, name):
         None
     """
 
-    omegas = encoder_apply_one_shift(ycoords, weights, biases, params['act_type'], params['batch_flag'], name=name,
+    omegas = encoder_apply_one_shift(ycoords, weights, biases, params['act_type'], name=name,
                                      num_encoder_weights=params['num_omega_weights'])
     return omegas
 
@@ -453,8 +443,7 @@ def create_koopman_net(params):
                                  dist_biases=params['dist_biases'][0:depth + 1], scale=params['scale'],
                                  num_shifts_max=max_shifts_to_stack, first_guess=params['first_guess'])
     params['num_encoder_weights'] = len(weights)
-    g_list = encoder_apply(x, weights, biases, params['act_type'], params['batch_flag'],
-                           shifts_middle=params['shifts_middle'],
+    g_list = encoder_apply(x, weights, biases, params['act_type'], shifts_middle=params['shifts_middle'],
                            num_encoder_weights=params['num_encoder_weights'])
 
     # g_list_omega is list of omegas, one entry for each middle_shift of x (like g_list)
@@ -475,8 +464,7 @@ def create_koopman_net(params):
     # y[0] is x[0,:,:] encoded and then decoded (no stepping forward)
     encoded_layer = g_list[0]
     params['num_decoder_weights'] = depth + 1
-    y.append(decoder_apply(encoded_layer, weights, biases, params['act_type'], params['batch_flag'],
-                           params['num_decoder_weights']))
+    y.append(decoder_apply(encoded_layer, weights, biases, params['act_type'], params['num_decoder_weights']))
 
     # g_list_omega[0] is for x[0,:,:], pairs with g_list[0]=encoded_layer
     advanced_layer = varying_multiply(encoded_layer, omegas, params['delta_t'], params['num_real'],
@@ -485,8 +473,7 @@ def create_koopman_net(params):
     for j in np.arange(max(params['shifts'])):
         # considering penalty on subset of yk+1, yk+2, yk+3, ...
         if (j + 1) in params['shifts']:
-            y.append(decoder_apply(advanced_layer, weights, biases, params['act_type'], params['batch_flag'],
-                                   params['num_decoder_weights']))
+            y.append(decoder_apply(advanced_layer, weights, biases, params['act_type'], params['num_decoder_weights']))
 
         omegas = omega_net_apply(params, advanced_layer, weights, biases)
         advanced_layer = varying_multiply(advanced_layer, omegas, params['delta_t'], params['num_real'],
