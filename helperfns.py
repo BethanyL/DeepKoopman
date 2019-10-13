@@ -342,6 +342,10 @@ def set_defaults(params):
     params['d'] = len(params['widths'])  # d must be calculated like this
 
     # defaults related to initialization of parameters
+    if 'seed' not in params:
+        random_seed = np.random.randint(2 ** 30)
+        print("setting default: choosing random seed of %d and saving to params" % random_seed)
+        params['seed'] = random_seed
     if 'dist_weights' not in params:
         print("setting default: distribution for weights on main net is tn (truncated normal)")
         params['dist_weights'] = 'tn'
