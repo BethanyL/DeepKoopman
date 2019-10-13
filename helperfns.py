@@ -355,13 +355,6 @@ def set_defaults(params):
         print("setting default: biases in auxiliary net will be init. to default number")
         params['dist_biases_omega'] = 0
 
-    if 'first_guess' not in params:
-        print("setting default: no first guess for main network")
-        params['first_guess'] = 0
-    if 'first_guess_omega' not in params:
-        print("setting default: no first guess for auxiliary net")
-        params['first_guess_omega'] = 0
-
     if 'scale' not in params:
         print("setting default: scale for weights in main net is 0.1 (applies to tn distribution)")
         params['scale'] = 0.1

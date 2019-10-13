@@ -4,7 +4,7 @@ import tensorflow as tf
 import helperfns
 
 
-def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0):
+def weight_variable(shape, var_name, distribution='tn', scale=0.1):
     """Create a variable for a weight matrix.
 
     Arguments:
@@ -12,7 +12,6 @@ def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0
         var_name -- string naming weight variable
         distribution -- string for which distribution to use for random initialization (default 'tn')
         scale -- (for tn distribution): standard deviation of normal distribution before truncation (default 0.1)
-        first_guess -- (for tn distribution): array of first guess for weight matrix, added to tn dist. (default 0)
 
     Returns:
         a TensorFlow variable for a weight matrix
@@ -23,7 +22,7 @@ def weight_variable(shape, var_name, distribution='tn', scale=0.1, first_guess=0
     Raises ValueError if distribution is filename but shape of data in file does not match input shape
     """
     if distribution == 'tn':
-        initial = tf.truncated_normal(shape, stddev=scale, dtype=tf.float64) + first_guess
+        initial = tf.truncated_normal(shape, stddev=scale, dtype=tf.float64)
     elif distribution == 'xavier':
         scale = 4 * np.sqrt(6.0 / (shape[0] + shape[1]))
         initial = tf.random_uniform(shape, minval=-scale, maxval=scale, dtype=tf.float64)
@@ -71,7 +70,7 @@ def bias_variable(shape, var_name, distribution=''):
     return tf.Variable(initial, name=var_name)
 
 
-def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_guess):
+def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max):
     """Create an encoder network: an input placeholder x, dictionary of weights, and dictionary of biases.
 
     Arguments:
@@ -80,7 +79,6 @@ def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_gues
         dist_biases -- array or list of strings for distributions of bias vectors
         scale -- (for tn distribution of weight matrices): standard deviation of normal distribution before truncation
         num_shifts_max -- number of shifts (time steps) that losses will use (max of num_shifts and num_shifts_middle)
-        first_guess -- (for tn dist. of weight matrices): array of first guess for weight matrix, added to tn dist.
 
     Returns:
         x -- placeholder for input
@@ -97,8 +95,7 @@ def encoder(widths, dist_weights, dist_biases, scale, num_shifts_max, first_gues
 
     for i in np.arange(len(widths) - 1):
         weights['WE%d' % (i + 1)] = weight_variable([widths[i], widths[i + 1]], var_name='WE%d' % (i + 1),
-                                                    distribution=dist_weights[i], scale=scale,
-                                                    first_guess=first_guess)
+                                                    distribution=dist_weights[i], scale=scale)
         # TODO: first guess for biases too (and different ones for different weights)
         biases['bE%d' % (i + 1)] = bias_variable([widths[i + 1], ], var_name='bE%d' % (i + 1),
                                                  distribution=dist_biases[i])
@@ -172,7 +169,7 @@ def encoder_apply_one_shift(prev_layer, weights, biases, act_type, name='E', num
     return final
 
 
-def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
+def decoder(widths, dist_weights, dist_biases, scale, name='D'):
     """Create a decoder network: a dictionary of weights and a dictionary of biases.
 
     Arguments:
@@ -181,8 +178,6 @@ def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
         dist_biases -- array or list of strings for distributions of bias vectors
         scale -- (for tn distribution of weight matrices): standard deviation of normal distribution before truncation
         name -- string for prefix on weight matrices (default 'D' for decoder)
-        first_guess -- (for tn dist. of weight matrices): array of first guess for weight matrix, added to tn dist.
-            (default 0)
 
     Returns:
         weights -- dictionary of weights
@@ -196,8 +191,7 @@ def decoder(widths, dist_weights, dist_biases, scale, name='D', first_guess=0):
     for i in np.arange(len(widths) - 1):
         ind = i + 1
         weights['W%s%d' % (name, ind)] = weight_variable([widths[i], widths[i + 1]], var_name='W%s%d' % (name, ind),
-                                                         distribution=dist_weights[ind - 1], scale=scale,
-                                                         first_guess=first_guess)
+                                                         distribution=dist_weights[ind - 1], scale=scale)
         biases['b%s%d' % (name, ind)] = bias_variable([widths[i + 1], ], var_name='b%s%d' % (name, ind),
                                                       distribution=dist_biases[ind - 1])
     return weights, biases
@@ -355,8 +349,7 @@ def create_one_omega_net(params, temp_name, weights, biases, widths):
         Updates weights and biases dictionaries
     """
     weightsO, biasesO = decoder(widths, dist_weights=params['dist_weights_omega'],
-                                dist_biases=params['dist_biases_omega'], scale=params['scale_omega'], name=temp_name,
-                                first_guess=params['first_guess_omega'])
+                                dist_biases=params['dist_biases_omega'], scale=params['scale_omega'], name=temp_name)
     weights.update(weightsO)
     biases.update(biasesO)
 
@@ -441,7 +434,7 @@ def create_koopman_net(params):
     encoder_widths = params['widths'][0:depth + 2]  # n ... k
     x, weights, biases = encoder(encoder_widths, dist_weights=params['dist_weights'][0:depth + 1],
                                  dist_biases=params['dist_biases'][0:depth + 1], scale=params['scale'],
-                                 num_shifts_max=max_shifts_to_stack, first_guess=params['first_guess'])
+                                 num_shifts_max=max_shifts_to_stack)
     params['num_encoder_weights'] = len(weights)
     g_list = encoder_apply(x, weights, biases, params['act_type'], shifts_middle=params['shifts_middle'],
                            num_encoder_weights=params['num_encoder_weights'])
