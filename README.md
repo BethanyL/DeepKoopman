@@ -6,7 +6,7 @@ Code for the paper ["Deep learning for universal linear embeddings of nonlinear 
 To run code:
 
 1. Clone respository.
-2. In the data directory, recreate desired dataset(s) by running DiscreteSpectrumExample, Pendulum, FluidFlowOnAttractor, and/or FluidFlowBox in Matlab. (or email to ask for the datasets)
+2. In the data directory, recreate desired dataset(s) by running DiscreteSpectrumExample, Pendulum, FluidFlowOnAttractor, and/or FluidFlowBox in Matlab (or download the datasets from Box [here](https://anl.box.com/s/9s29juzu892dfkhgxa1n1q4mj63nxabn)).
 3. Back in the main directory, run desired experiment(s) with python.
 
 Notes on running the Python experiments:
