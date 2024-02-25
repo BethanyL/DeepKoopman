@@ -24,6 +24,8 @@ class SimpleKoopmanNeuralNetwork(nn.Module):
         #Without Auxiliary Network
         self.K = nn.Linear(latent_size, latent_size, bias=False)
 
+    def timeShift(self, )
+
     def forward(self, x_k):
         y_k = self.Encoder(x_k)
         y_k1 = self.K(y_k)
