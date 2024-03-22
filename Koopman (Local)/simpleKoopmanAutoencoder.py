@@ -79,6 +79,11 @@ class SimpleLossFunction(nn.Module):
 
         return torch.linalg.vector_norm(x - xEncoded, ord = np.inf) + torch.linalg.vector_norm(xNext - xNextEncoded, ord = np.inf)
 
+    def lossLin(self, x, xNextList):
+        
+        return torch.mean(torch.stack([F.mse_loss(x, xNext) for xNext in xNextList]))
+
+
     def lossWeight(self, model):
 
         lossWeight = 0
